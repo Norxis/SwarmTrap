@@ -1,0 +1,249 @@
+/* SwarmTrap.net — Dark manifesto theme */
+
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #111;
+  --text: #e8e8e8;
+  --muted: #666;
+  --accent: #00ff88;
+  --accent-dim: #00cc6a;
+  --border: #222;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  font-size: 18px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.narrow {
+  max-width: 720px;
+}
+
+/* HERO */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+}
+
+.logo {
+  font-family: 'Courier New', monospace;
+  font-size: 4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.tagline {
+  font-size: 1.5rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 3rem;
+}
+
+.scroll-cta {
+  color: var(--accent);
+  text-decoration: none;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.scroll-cta:hover {
+  opacity: 1;
+}
+
+/* THESIS */
+#thesis {
+  padding: 8rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+#thesis h2 {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  margin-bottom: 3rem;
+}
+
+#thesis p {
+  margin-bottom: 1.5rem;
+  color: #ccc;
+}
+
+#thesis strong {
+  color: var(--text);
+}
+
+#thesis em {
+  color: var(--accent-dim);
+  font-style: italic;
+}
+
+.highlight {
+  border-left: 3px solid var(--accent);
+  padding-left: 1.5rem;
+  color: var(--text) !important;
+  font-size: 1.05rem;
+  margin: 2.5rem 0;
+}
+
+/* PROOF */
+#proof {
+  padding: 6rem 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+#proof h2 {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 3rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem 1rem;
+}
+
+.stat-value {
+  display: block;
+  font-family: 'Courier New', monospace;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* INVITATION */
+#invite {
+  padding: 8rem 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+#invite h2 {
+  font-family: 'Courier New', monospace;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+#invite p {
+  color: #ccc;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.cta-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.8rem 2rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.3s;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.btn:hover {
+  background: #fff;
+  color: var(--bg);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.btn-outline:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* FOOTER */
+footer {
+  padding: 3rem 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  html { font-size: 16px; }
+  .logo { font-size: 2.5rem; }
+  .tagline { font-size: 1.2rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .stat-value { font-size: 1.6rem; }
+  #thesis, #invite { padding: 4rem 1.5rem; }
+}
