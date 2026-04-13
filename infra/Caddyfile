@@ -1,0 +1,63 @@
+swarmtrap.net {
+	# --- Write protection on dashboard data proxy ---
+	@dashboard_write {
+		method POST PUT DELETE PATCH
+		path /dashboard/data/*
+	}
+	respond @dashboard_write 403
+
+	# --- Block hidden SOC pages ---
+	@hidden_soc {
+		path /dashboard/control*
+		path /dashboard/vms*
+		path /dashboard/audit*
+	}
+	redir @hidden_soc /dashboard/ 302
+
+	# --- SOC data proxy (GET only → PV1) ---
+	handle_path /dashboard/data/* {
+		rewrite * /data/{path}
+		reverse_proxy 192.168.0.100:8010 {
+			header_up X-API-Key {env.SOC_READONLY_KEY}
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	# --- SOC health check proxy ---
+	handle /dashboard/health {
+		rewrite * /health
+		reverse_proxy 192.168.0.100:8010 {
+			header_up X-API-Key {env.SOC_READONLY_KEY}
+			header_up Host {upstream_hostport}
+		}
+	}
+
+	# --- SOC dashboard static build ---
+	handle /dashboard {
+		redir /dashboard/ 302
+	}
+
+	handle_path /dashboard/* {
+		root * /opt/swarmtrap/dashboard/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	# --- API proxy (signup + stats) ---
+	handle /api/* {
+		reverse_proxy localhost:8099
+	}
+
+	# --- Founding documents ---
+	handle_path /docs/* {
+		root * /opt/swarmtrap/docs
+		file_server
+	}
+
+	# --- Static site pages ---
+	handle {
+		root * /opt/swarmtrap/site
+		try_files {path} {path}.html {path}/index.html
+		file_server
+	}
+}

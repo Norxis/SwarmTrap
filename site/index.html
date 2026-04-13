@@ -9,81 +9,36 @@
 </head>
 <body>
 
-  <!-- HERO -->
+  <nav class="site-nav">
+    <a href="/" class="nav-logo">Swarm<span class="accent">Trap</span></a>
+    <ul class="nav-links">
+      <li><a href="/thesis">Thesis</a></li>
+      <li><a href="/proof">Proof</a></li>
+      <li><a href="/join">Join</a></li>
+    </ul>
+  </nav>
+
   <section id="hero">
     <div class="container">
       <h1 class="logo">Swarm<span class="accent">Trap</span></h1>
       <p class="tagline">AI makes better attacks.<br>Physics makes better traps.</p>
-      <a href="#thesis" class="scroll-cta">Read the thesis &darr;</a>
-    </div>
-  </section>
 
-  <!-- THESIS -->
-  <section id="thesis">
-    <div class="container narrow">
-      <h2>The Thesis</h2>
-
-      <p>Everyone is worried about AI-powered cyberattacks. They should be. Large language models can generate novel exploits, mutate malware past signatures, and automate the entire attack chain from reconnaissance to exfiltration.</p>
-
-      <p>But there's something AI can't change: <strong>TCP physics.</strong></p>
-
-      <p>Every attack on the internet follows a mandatory sequence. The attacker must <em>scan</em> to find targets. They must <em>knock</em> to test which services respond. Only then can they <em>exploit</em>. This isn't a convention — it's how the protocol works. You can't skip the handshake. You can't exploit a port you haven't probed. AI can make each step faster, stealthier, more creative. But it cannot eliminate the steps.</p>
-
-      <p>The knock phase is where the attacker reveals their hand. They must send packets that show their technique <em>before</em> they can do damage. And that's where we catch them.</p>
-
-      <p class="highlight">Globally distributed honeypots — machines that exist only to be attacked — capture every knock sequence in real time. Every zero-day exploit AI generates becomes a signature the moment it touches a trap. The more AI attacks, the more the system learns.</p>
-
-      <p>Attackers fuel their own detection.</p>
-
-      <p>But building a global sensor network takes hundreds of machines across every continent. No company can afford to deploy and maintain that infrastructure alone. Only a cooperative can — where every contributor who runs a $3/month honeypot VM earns a share of the intelligence it produces.</p>
-
-      <p>That's SwarmTrap. A cybersecurity cooperative where the people who build the system own it.</p>
-    </div>
-  </section>
-
-  <!-- PROOF -->
-  <section id="proof">
-    <div class="container">
-      <h2>The System Is Running</h2>
-      <p class="subtitle">Live data from our production sensor network.</p>
-      <div class="stats-grid" id="stats">
-        <div class="stat">
-          <span class="stat-value" id="s-ips">—</span>
-          <span class="stat-label">IPs Tracked</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="s-attackers">—</span>
-          <span class="stat-label">Confirmed Attackers</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="s-sensors">—</span>
-          <span class="stat-label">Honeypot Sensors</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="s-evidence">—</span>
-          <span class="stat-label">Evidence Events</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="s-accuracy">—</span>
-          <span class="stat-label">Model Accuracy</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value" id="s-captured">—</span>
-          <span class="stat-label">Training Samples</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- INVITATION -->
-  <section id="invite">
-    <div class="container narrow">
-      <h2>Own What You Build</h2>
-      <p>SwarmTrap is not a company. It's a cooperative. 90% of net revenue goes to the people who build, operate, and improve the system. No investors extracting value. No stock options that vest in four years. You contribute, you earn — transparently, from day one.</p>
-      <p>We need data scientists, developers, honeypot operators, security researchers, and anyone who believes cybersecurity intelligence should be built by the community that uses it.</p>
-      <div class="cta-group">
-        <a href="https://github.com/SwarmTrap" class="btn">GitHub</a>
-        <a href="/SwarmTrap_Founding_Document_v4.md" class="btn btn-outline">Read the Founding Document</a>
+      <div class="hooks">
+        <a href="/thesis" class="hook-card">
+          <h3>The Thesis</h3>
+          <p>This might be the only way to beat AI hackers. Not better signatures. Not faster patches. A structural advantage that AI can't overcome.</p>
+          <span class="card-link">Read the thesis &rarr;</span>
+        </a>
+        <a href="/proof" class="hook-card">
+          <h3>The Proof</h3>
+          <p>This isn't a whitepaper. The system is running. A live sensor network catching real attackers at wire speed. See it yourself.</p>
+          <span class="card-link">See the proof &rarr;</span>
+        </a>
+        <a href="/join" class="hook-card">
+          <h3>Own What You Build</h3>
+          <p>Contributors build it. Contributors own it. 90% of net revenue goes to the people who build, operate, and improve the system.</p>
+          <span class="card-link">Join the cooperative &rarr;</span>
+        </a>
       </div>
     </div>
   </section>
@@ -94,6 +49,5 @@
     </div>
   </footer>
 
-  <script src="main.js"></script>
 </body>
 </html>

@@ -1,0 +1,14 @@
+[Unit]
+Description=SwarmTrap API Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=colo8gent
+WorkingDirectory=/opt/swarmtrap/proxy
+ExecStart=/opt/swarmtrap/proxy/venv/bin/uvicorn proxy:app --host 127.0.0.1 --port 8099
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

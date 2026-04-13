@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join — SwarmTrap</title>
+  <meta name="description" content="SwarmTrap is a cybersecurity cooperative. Contributors build it, contributors own it. Join the founding cohort.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="/" class="nav-logo">Swarm<span class="accent">Trap</span></a>
+    <ul class="nav-links">
+      <li><a href="/thesis">Thesis</a></li>
+      <li><a href="/proof">Proof</a></li>
+      <li><a href="/join" class="active">Join</a></li>
+    </ul>
+  </nav>
+
+  <header class="page-header">
+    <div class="container narrow">
+      <h1>Own What You Build</h1>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="container narrow">
+
+      <p>SwarmTrap is not a company. It's a cooperative. <strong>90% of net revenue</strong> goes to the people who build, operate, and improve the system. No investors extracting value. No stock options that vest in four years. You contribute, you earn — transparently, from day one.</p>
+
+      <p>The first contributors build <strong>Foundation</strong> — the open-source platform that powers every Open Utopia cooperative. The ledger, the voting system, the distribution engine, the decentralized node network. You build the ground everything stands on.</p>
+
+      <p>We need developers, data scientists, security researchers, honeypot operators, and anyone who believes cybersecurity intelligence should be built by the community that uses it.</p>
+
+      <form class="signup-form" id="signup-form">
+        <div class="form-error" id="form-error"></div>
+
+        <label for="f-name">Name</label>
+        <input type="text" id="f-name" name="name" required maxlength="128" autocomplete="name">
+
+        <label for="f-email">Email</label>
+        <input type="email" id="f-email" name="email" required maxlength="256" autocomplete="email">
+
+        <fieldset>
+          <legend>What would you contribute?</legend>
+          <div class="checkbox-group">
+            <label><input type="checkbox" name="roles" value="node_operator"> Node Operator</label>
+            <label><input type="checkbox" name="roles" value="developer"> Developer</label>
+            <label><input type="checkbox" name="roles" value="ml_data_scientist"> ML / Data Scientist</label>
+            <label><input type="checkbox" name="roles" value="security_researcher"> Security Researcher</label>
+            <label><input type="checkbox" name="roles" value="community_governance"> Community / Governance</label>
+          </div>
+        </fieldset>
+
+        <label for="f-why">Why SwarmTrap? <span style="color:var(--muted)">(optional)</span></label>
+        <textarea id="f-why" name="why" maxlength="500" rows="3"></textarea>
+
+        <!-- Honeypot: hidden from humans, bots fill it -->
+        <div style="position:absolute;left:-9999px" aria-hidden="true">
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <button type="submit" class="btn">Join the founding cohort</button>
+      </form>
+
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 SwarmTrap Cooperative. Built by contributors.</p>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+
+</body>
+</html>

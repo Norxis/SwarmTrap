@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Proof — SwarmTrap</title>
+  <meta name="description" content="Live data from a production sensor network. This isn't a demo.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="/" class="nav-logo">Swarm<span class="accent">Trap</span></a>
+    <ul class="nav-links">
+      <li><a href="/thesis">Thesis</a></li>
+      <li><a href="/proof" class="active">Proof</a></li>
+      <li><a href="/join">Join</a></li>
+    </ul>
+  </nav>
+
+  <header class="page-header">
+    <div class="container">
+      <h1>The System Is Running</h1>
+      <p class="subtitle">This isn't a demo. This is a production sensor network processing live internet traffic.<br>Attackers are being caught right now.</p>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="container">
+
+      <div class="stats-grid" id="stats">
+        <div class="stat">
+          <span class="stat-value" id="s-ips">&mdash;</span>
+          <span class="stat-label">IPs Tracked</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="s-attackers">&mdash;</span>
+          <span class="stat-label">Confirmed Attackers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="s-sensors">&mdash;</span>
+          <span class="stat-label">Honeypot Sensors</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="s-evidence">&mdash;</span>
+          <span class="stat-label">Evidence Events</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="s-accuracy">&mdash;</span>
+          <span class="stat-label">Model Accuracy</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="s-captured">&mdash;</span>
+          <span class="stat-label">Training Samples</span>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin: 3rem 0">
+        <p style="color: #ccc; margin-bottom: 1.5rem;">Go inside the live SOC dashboard. Everything you see is real.</p>
+        <a href="/dashboard/" class="btn btn-large">Enter the live SOC dashboard &rarr;</a>
+      </div>
+
+      <ul class="soc-features">
+        <li>Live attack map with GeoIP — real attackers hitting real honeypots</li>
+        <li>Real-time packet processing metrics — packets per second, classification rate</li>
+        <li>IP kill chains — watch an attacker progress from scan to knock to exploit</li>
+        <li>ML model performance — XGBoost accuracy, scoring throughput, training status</li>
+        <li>GOD intelligence dashboard — the Two Gods judging every IP in real time</li>
+        <li>Per-service analysis — SSH, RDP, HTTP, SMB broken down individually</li>
+      </ul>
+
+      <div class="cta-group">
+        <a href="/join" class="btn btn-outline">Join the cooperative &rarr;</a>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 SwarmTrap Cooperative. Built by contributors.</p>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+
+</body>
+</html>

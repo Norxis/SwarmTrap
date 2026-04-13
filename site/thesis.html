@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Thesis — SwarmTrap</title>
+  <meta name="description" content="This might be the only way to beat AI hackers. The TCP physics argument for globally distributed honeypots.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="/" class="nav-logo">Swarm<span class="accent">Trap</span></a>
+    <ul class="nav-links">
+      <li><a href="/thesis" class="active">Thesis</a></li>
+      <li><a href="/proof">Proof</a></li>
+      <li><a href="/join">Join</a></li>
+    </ul>
+  </nav>
+
+  <header class="page-header">
+    <div class="container narrow">
+      <h1>The Thesis</h1>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="container narrow">
+
+      <p class="lead">"This might be the only way to beat AI hackers."</p>
+
+      <p>Not better signatures. Not faster patches. Not another AI racing against AI. The only structural advantage defenders have is <strong>physics</strong> — and nobody's using it.</p>
+
+      <p>Everyone is worried about AI-powered cyberattacks. They should be. Large language models can generate novel exploits, mutate malware past signatures, and automate the entire attack chain from reconnaissance to exfiltration. The cost of generating a new zero-day is collapsing toward zero.</p>
+
+      <p>But there's something AI can't change: <strong>TCP physics.</strong></p>
+
+      <p>Every attack on the internet follows a mandatory sequence. The attacker must <em>scan</em> to find targets. They must <em>knock</em> — send specially crafted packets to test which services respond and confirm specific vulnerabilities. Only then can they <em>exploit</em>. This isn't a convention. It's how the protocol works. You can't skip the handshake. You can't exploit a port you haven't probed. AI can make each step faster, stealthier, more creative. But it cannot eliminate the steps.</p>
+
+      <p class="highlight">The knock phase is where the attacker reveals their hand. To confirm that a service has a specific exploitable weakness, they <strong>must send packets that show their technique</strong> before they can do damage. The knock is the attacker showing their hand before they play it.</p>
+
+      <p>Globally distributed honeypots — machines that exist only to be attacked — capture every knock sequence in real time. Every zero-day exploit AI generates becomes a signature the moment it touches a trap. The attacker cannot fake the knock. If they send the wrong probe, they get the wrong answer, and the exploit fails.</p>
+
+      <p>The more AI attacks, the more the system learns. <strong>Attackers fuel their own detection.</strong></p>
+
+      <p>The cost asymmetry favors the defender. The AI attacker's cost scales per novel attack — every zero-day requires compute to discover, and the knock sequence must be crafted specifically for each vulnerability. The defender's cost is near-zero marginal observation: a $3/month VM captures whatever hits it.</p>
+
+      <p>As AI accelerates zero-day discovery, more novel attacks land on honeypots during the scan phase. More captured knocks means ML models learn faster. The AI attacker is funding the defender's research. Every zero-day wasted on a honeypot is captured immediately, burned as a zero-day, and becomes free training data for the next model update.</p>
+
+      <p class="highlight">This is not a classification engine that labels known attacks. It is a <strong>global immune system</strong> with real-time antibody distribution. AI scans the internet, hits a honeypot, the knock is captured, the model trains, the updated model pushes worldwide, the exploit is filtered before delivery.</p>
+
+      <p>But building a global sensor network takes hundreds of machines across every continent, running real services, capturing real traffic. No company can afford to deploy and maintain that infrastructure alone. Only a cooperative can — where every contributor who runs a $3/month honeypot VM earns a share of the intelligence it produces.</p>
+
+      <p>That's SwarmTrap. A cybersecurity cooperative where the people who build the system own it. The arms race favors the defender with the largest observation network — and a cooperative is the only economic model that builds one large enough.</p>
+
+      <div class="cta-group">
+        <a href="/proof" class="btn">See the system running &rarr;</a>
+        <a href="/join" class="btn btn-outline">Join the cooperative &rarr;</a>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 SwarmTrap Cooperative. Built by contributors.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
