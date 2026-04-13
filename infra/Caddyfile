@@ -1,11 +1,5 @@
 swarmtrap.net {
-	# --- Write protection on dashboard data proxy ---
-	@dashboard_write {
-		method POST PUT DELETE PATCH
-		path /dashboard/data/*
-	}
-	respond @dashboard_write 403
-
+	bind 216.126.0.205
 	# --- Block hidden SOC pages ---
 	@hidden_soc {
 		path /dashboard/control*
@@ -14,9 +8,11 @@ swarmtrap.net {
 	}
 	redir @hidden_soc /dashboard/ 302
 
-	# --- SOC data proxy (GET only → PV1) ---
-	handle_path /dashboard/data/* {
-		rewrite * /data/{path}
+	# --- SOC data proxy (GET only → PV1, writes blocked) ---
+	handle /dashboard/data/* {
+		@write method POST PUT DELETE PATCH
+		respond @write 403
+		uri strip_prefix /dashboard
 		reverse_proxy 192.168.0.100:8010 {
 			header_up X-API-Key {env.SOC_READONLY_KEY}
 			header_up Host {upstream_hostport}
@@ -25,7 +21,7 @@ swarmtrap.net {
 
 	# --- SOC health check proxy ---
 	handle /dashboard/health {
-		rewrite * /health
+		uri strip_prefix /dashboard
 		reverse_proxy 192.168.0.100:8010 {
 			header_up X-API-Key {env.SOC_READONLY_KEY}
 			header_up Host {upstream_hostport}
