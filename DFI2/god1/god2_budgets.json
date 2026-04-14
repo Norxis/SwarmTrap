@@ -1,0 +1,39 @@
+{
+    "_comment": "Target flow count per verdict_group. 0 = stop capturing, DROP all. Wildcard (*) checked after exact match.",
+
+    "DIS_FN_SSH_EVD":       500000,
+    "DIS_FN_HTTP_EVD":      500000,
+    "DIS_FN_RDP_EVD":       300000,
+    "DIS_FN_SQL_EVD":       300000,
+    "DIS_FN_SMB_EVD":       300000,
+    "DIS_FP_SSH":           500000,
+    "DIS_FP_HTTP":          500000,
+    "DIS_FP_RDP":           300000,
+    "DIS_FP_SQL":           300000,
+    "DIS_FP_SMB":           300000,
+    "DIS_MISCLASS_*":       300000,
+
+    "SSH_SCAN_EVD":         200000,
+    "SSH_BRUTE_EVD":        500000,
+    "SSH_CREDENTIAL_EVD":   500000,
+    "SSH_COMMAND_EVD":      500000,
+    "SSH_PERSIST_EVD":      500000,
+    "HTTP_EXPLOIT_EVD":     500000,
+    "HTTP_WEBSHELL_EVD":    500000,
+    "RDP_BRUTE_EVD":        300000,
+    "SQL_INJECTION_EVD":    300000,
+    "SMB_EXPLOIT_EVD":      300000,
+    "SMB_LATERAL_EVD":      300000,
+    "MULTI_*_EVD":          500000,
+
+    "SSH_SCAN_NOEVD":       200000,
+    "HTTP_SCAN_NOEVD":      200000,
+    "RDP_SCAN_NOEVD":       200000,
+    "SQL_SCAN_NOEVD":       200000,
+    "SMB_SCAN_NOEVD":       200000,
+    "MULTI_*_NOEVD":        200000,
+
+    "CLN":                  0,
+    "RB":                   100000,
+    "_DEFAULT":             100000
+}

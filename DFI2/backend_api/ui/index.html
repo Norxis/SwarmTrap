@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DFI2 SOC Control Plane</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* CSS VARIABLES */
+:root {
+  --bg:#0d1117; --panel:#161b22; --card:#21262d; --border:#30363d;
+  --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --danger:#f85149;
+  --warn:#e3b341; --ok:#56d364; --subtle:#6e7681;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:"SF Mono","Consolas","IBM Plex Mono",monospace;font-size:13px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* TOPBAR */
+#topbar{height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:10;}
+#topbar .brand{font-weight:700;font-size:14px;color:var(--text);display:flex;align-items:center;gap:6px;}
+#topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);}
+#topbar .spacer{flex:1;}
+#topbar input{background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:6px;width:200px;font-size:12px;}
+#topbar input::placeholder{color:var(--muted);}
+#health-dot{width:8px;height:8px;border-radius:50%;background:var(--subtle);}
+#health-dot.ok{background:var(--ok);}
+#health-dot.err{background:var(--danger);}
+
+/* BODY LAYOUT */
+#layout{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+#sidebar{width:180px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:8px 0;flex-shrink:0;}
+.nav-item{padding:8px 16px;cursor:pointer;color:var(--muted);border-left:3px solid transparent;transition:all .15s;}
+.nav-item:hover{color:var(--text);background:var(--card);}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(88,166,255,.08);}
+.nav-divider{height:1px;background:var(--border);margin:8px 12px;}
+.nav-label{padding:6px 16px 4px;font-size:10px;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;}
+
+/* MAIN */
+#main{flex:1;overflow-y:auto;padding:16px;}
+
+/* CARDS / PANELS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;}
+.card h2{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text);}
+.card h3{font-size:12px;font-weight:600;margin-bottom:10px;color:var(--muted);}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;}
+.kpi .val{font-size:28px;font-weight:700;color:var(--accent);line-height:1;}
+.kpi .lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;}
+.kpi.danger .val{color:var(--danger);}
+.kpi.warn .val{color:var(--warn);}
+.kpi.ok .val{color:var(--ok);}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+td{padding:7px 6px;border-bottom:1px solid rgba(48,54,61,.6);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.025);}
+.ip-link{color:var(--accent);cursor:pointer;text-decoration:none;}
+.ip-link:hover{text-decoration:underline;}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.04em;}
+.badge.d0{background:rgba(110,118,129,.2);color:var(--subtle);}
+.badge.d1{background:rgba(88,166,255,.15);color:var(--accent);}
+.badge.d2{background:rgba(227,179,65,.15);color:var(--warn);}
+.badge.d3{background:rgba(248,81,73,.2);color:var(--danger);}
+.badge.p1{background:rgba(248,81,73,.2);color:var(--danger);}
+.badge.p2{background:rgba(227,179,65,.15);color:var(--warn);}
+.badge.p3{background:rgba(110,118,129,.2);color:var(--subtle);}
+.badge.grp-recon{background:rgba(88,166,255,.15);color:var(--accent);}
+.badge.grp-cred{background:rgba(248,81,73,.2);color:var(--danger);}
+.badge.grp-exploit{background:rgba(248,81,73,.25);color:#ff7b72;}
+.badge.grp-infra{background:rgba(227,179,65,.15);color:var(--warn);}
+.badge.grp-campaign{background:rgba(86,211,100,.15);color:var(--ok);}
+.badge.grp-other{background:rgba(110,118,129,.2);color:var(--subtle);}
+.badge.running{background:rgba(86,211,100,.15);color:var(--ok);}
+.badge.stopped{background:rgba(248,81,73,.2);color:var(--danger);}
+.badge.unknown{background:rgba(110,118,129,.2);color:var(--subtle);}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+.filter-bar input,.filter-bar select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:12px;}
+.filter-bar input::placeholder{color:var(--muted);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-family:inherit;background:var(--card);color:var(--text);transition:all .15s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600;}
+.btn.primary:hover{background:#79bfff;}
+.btn.danger{background:rgba(248,81,73,.15);color:var(--danger);border-color:var(--danger);}
+.btn.danger:hover{background:var(--danger);color:#fff;}
+.btn.sm{padding:3px 7px;font-size:11px;}
+
+/* FORMS */
+.form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.form-group{display:flex;flex-direction:column;flex:1;min-width:120px;}
+.form-group label{font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;}
+.form-group input,.form-group select,.form-group textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px;font-family:inherit;}
+.form-group textarea{min-height:64px;resize:vertical;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);}
+
+/* TABS */
+.tab-strip{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border);}
+.tab{padding:7px 14px;cursor:pointer;color:var(--muted);font-size:12px;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* CHARTS */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.chart-wrap h3{font-size:12px;color:var(--muted);margin-bottom:10px;}
+
+/* PROFILE PAGE */
+.profile-header{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;}
+.profile-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.profile-meta{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;}
+.profile-meta .meta-item{display:flex;flex-direction:column;gap:2px;}
+.profile-meta .meta-item .key{font-size:10px;color:var(--muted);text-transform:uppercase;}
+.profile-meta .meta-item .val{font-size:13px;color:var(--text);}
+
+/* HUNTER-AIO BANNER */
+.aio-banner{background:var(--panel);border:2px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;gap:24px;}
+.aio-banner.ok{border-color:var(--ok);}
+.aio-banner.err{border-color:var(--danger);}
+.aio-banner.warn{border-color:var(--warn);}
+.aio-icon{width:72px;height:72px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:36px;flex-shrink:0;}
+.aio-icon.ok{background:rgba(86,211,100,.12);color:var(--ok);}
+.aio-icon.err{background:rgba(248,81,73,.12);color:var(--danger);}
+.aio-icon.warn{background:rgba(227,179,65,.12);color:var(--warn);}
+.aio-icon.loading{background:rgba(110,118,129,.12);color:var(--subtle);}
+.aio-info{flex:1;min-width:0;}
+.aio-title{font-size:18px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:10px;}
+.aio-subtitle{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.aio-stats{display:flex;gap:20px;flex-wrap:wrap;}
+.aio-stat{text-align:center;}
+.aio-stat .val{font-size:20px;font-weight:700;color:var(--accent);line-height:1;}
+.aio-stat .lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.aio-stat.danger .val{color:var(--danger);}
+.aio-stat.warn .val{color:var(--warn);}
+.aio-stat.ok .val{color:var(--ok);}
+.aio-services{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.aio-svc{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(86,211,100,.1);color:var(--ok);border:1px solid rgba(86,211,100,.2);}
+.aio-svc.down{background:rgba(248,81,73,.1);color:var(--danger);border-color:rgba(248,81,73,.2);}
+.aio-svc .svc-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);}
+.aio-svc.down .svc-dot{background:var(--danger);}
+
+/* VM GRID */
+.vm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;}
+.vm-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.vm-card-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.vm-card-header .vm-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.vm-card-header .vm-name{font-weight:700;font-size:14px;}
+.vm-metrics{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:8px;}
+.vm-metrics span{color:var(--text);}
+.vm-footer{display:flex;gap:8px;margin-top:10px;}
+.vm-events{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:10px;display:none;}
+.vm-events.open{display:block;}
+
+/* TOAST */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;max-width:320px;animation:fadeIn .2s ease;}
+.toast.ok{border-left:3px solid var(--ok);}
+.toast.err{border-left:3px solid var(--danger);}
+.toast.info{border-left:3px solid var(--accent);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* MODAL */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:none;align-items:center;justify-content:center;}
+#modal-overlay.open{display:flex;}
+#modal-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;max-width:420px;width:90%;}
+#modal-box h3{margin-bottom:12px;font-size:14px;}
+#modal-box .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty .icon{font-size:32px;margin-bottom:8px;}
+
+/* ACTIVITY FEED */
+.feed-item{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(48,54,61,.5);font-size:11px;}
+.feed-item .feed-ts{color:var(--muted);white-space:nowrap;}
+.feed-item .feed-ip{color:var(--accent);font-weight:600;}
+.feed-item .feed-action{color:var(--text);}
+
+/* QUICK TEMPLATES */
+.templates{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.templates .lbl{font-size:10px;color:var(--muted);align-self:center;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="brand"><div class="dot"></div>DFI2 SOC Control Plane</div>
+  <div class="spacer"></div>
+  <div id="health-dot" title="API Health"></div>
+  <input id="top-search" placeholder="Quick IP search..." oninput="onTopSearch(this.value)"/>
+  <input id="api-key" placeholder="X-API-Key" style="width:160px;" onchange="onApiKeyChange()"/>
+</div>
+
+<!-- LAYOUT -->
+<div id="layout">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="nav-label">Operations</div>
+    <div class="nav-item active" onclick="nav('overview')" data-page="overview">Overview</div>
+    <div class="nav-item" onclick="nav('explorer')" data-page="explorer">Explorer</div>
+    <div class="nav-item" onclick="nav('profile')" data-page="profile">IP Profile</div>
+    <div class="nav-item" onclick="nav('campaigns')" data-page="campaigns">Campaigns</div>
+    <div class="nav-divider"></div>
+    <div class="nav-label">Control</div>
+    <div class="nav-item" onclick="nav('control')" data-page="control">Control Plane</div>
+    <div class="nav-item" onclick="nav('audit')" data-page="audit">Audit Log</div>
+    <div class="nav-item" onclick="nav('vms')" data-page="vms">VM Status</div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="main"></div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h3 id="modal-title">Confirm</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="modalCancel()">Cancel</button>
+      <button class="btn danger" id="modal-confirm-btn" onclick="modalConfirm()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// STATE
+// ============================================================
+let _currentPage = 'overview';
+let _refreshTimer = null;
+let _apiKey = localStorage.getItem('dfi2_api_key') || '';
+let _profileIP = null;
+let _explorerData = [];
+let _explorerHours = 24;
+let _modalResolve = null;
+let _depthChartInst = null;
+let _groupChartInst = null;
+let _controlTab = 'upsert';
+
+document.getElementById('api-key').value = _apiKey;
+
+function onApiKeyChange() {
+  _apiKey = document.getElementById('api-key').value.trim();
+  localStorage.setItem('dfi2_api_key', _apiKey);
+}
+
+function onTopSearch(v) {
+  if (v.length >= 7 && /^\d{1,3}\.\d/.test(v)) {
+    nav('profile', { ip: v.trim() });
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function nav(page, ctx) {
+  ctx = ctx || {};
+  stopRefresh();
+  _currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="empty"><div class="icon">&#x23F3;</div>Loading...</div>';
+  if (page === 'overview') renderPageOverview();
+  else if (page === 'explorer') renderPageExplorer(ctx);
+  else if (page === 'profile') renderPageProfile(ctx.ip || _profileIP);
+  else if (page === 'campaigns') renderPageCampaigns();
+  else if (page === 'control') renderPageControl();
+  else if (page === 'audit') renderPageAudit();
+  else if (page === 'vms') renderPageVMs();
+}
+
+// ============================================================
+// API
+// ============================================================
+function genKey() {
+  try { return crypto.randomUUID(); } catch(e) { return Date.now() + '-' + Math.random().toString(36).slice(2); }
+}
+
+function apiHeaders(write) {
+  var h = { 'Content-Type': 'application/json' };
+  if (_apiKey) h['X-API-Key'] = _apiKey;
+  if (write) h['Idempotency-Key'] = genKey();
+  return h;
+}
+
+async function apiFetch(path) {
+  try {
+    var r = await fetch(path, { headers: apiHeaders(false) });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function apiPost(path, body) {
+  var r = await fetch(path, {
+    method: 'POST',
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  var data = await r.json().catch(function() { return {}; });
+  if (!r.ok) throw new Error(data.detail || 'request failed');
+  return data;
+}
+
+async function checkHealth() {
+  var dot = document.getElementById('health-dot');
+  var d = await apiFetch('/health');
+  dot.className = d ? 'ok' : 'err';
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function ts(epoch) {
+  if (!epoch) return '\u2014';
+  return new Date(epoch * 1000).toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function reltime(epoch) {
+  if (!epoch) return '\u2014';
+  var diff = Math.floor(Date.now() / 1000) - epoch;
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function depthBadge(d) {
+  var n = parseInt(d) || 0;
+  return '<span class="badge d' + n + '">D' + n + '</span>';
+}
+
+function priorityBadge(p) {
+  var n = parseInt(p) || 3;
+  return '<span class="badge p' + n + '">P' + n + '</span>';
+}
+
+function groupBadge(g) {
+  if (!g) return '<span class="badge grp-other">UNCLASSIFIED</span>';
+  var gUpper = g.toUpperCase();
+  var cls = 'grp-other';
+  var lbl = gUpper.replace(/_/g,' ').slice(0,14);
+  if (gUpper.includes('RECON') || gUpper.includes('SCAN')) cls = 'grp-recon';
+  else if (gUpper.includes('CRED') || gUpper.includes('BRUTE')) cls = 'grp-cred';
+  else if (gUpper.includes('EXPLOIT') || gUpper.includes('PHASED')) cls = 'grp-exploit';
+  else if (gUpper.includes('INFRA') || gUpper.includes('DNS') || gUpper.includes('AMP')) cls = 'grp-infra';
+  else if (gUpper.includes('CAMPAIGN') || gUpper.includes('PIVOT') || gUpper.includes('PROGR')) cls = 'grp-campaign';
+  return '<span class="badge ' + cls + '">' + lbl + '</span>';
+}
+
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(1) + ' MB';
+}
+
+function fmtUptime(s) {
+  if (!s) return '\u2014';
+  var d = Math.floor(s/86400);
+  var h = Math.floor((s%86400)/3600);
+  var m = Math.floor((s%3600)/60);
+  if (d > 0) return d + 'd ' + h + 'h';
+  if (h > 0) return h + 'h ' + m + 'm';
+  return m + 'm';
+}
+
+function showToast(msg, type) {
+  type = type || 'info';
+  var c = document.getElementById('toast-container');
+  var div = document.createElement('div');
+  div.className = 'toast ' + type;
+  div.textContent = msg;
+  c.appendChild(div);
+  setTimeout(function() { div.remove(); }, 4000);
+}
+
+function confirmModal(title, bodyHtml) {
+  return new Promise(function(resolve) {
+    _modalResolve = resolve;
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHtml;
+    document.getElementById('modal-overlay').classList.add('open');
+  });
+}
+
+function modalCancel() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
+}
+
+function modalConfirm() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
+}
+
+function startRefresh(fn, sec) {
+  sec = sec || 30;
+  stopRefresh();
+  _refreshTimer = setInterval(fn, sec * 1000);
+}
+
+function stopRefresh() {
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+}
+
+// ============================================================
+// PAGE: OVERVIEW
+// ============================================================
+async function renderPageOverview() {
+  var data = await apiFetch('/data/overview?window=15');
+  var audit = await apiFetch('/data/audit?limit=10');
+  var main = document.getElementById('main');
+  if (!data) {
+    main.innerHTML = renderEmpty('No overview data', 'ClickHouse may be empty or unreachable');
+    return;
+  }
+  var d3count = data.top_attackers ? data.top_attackers.filter(function(a) { return a.capture_depth === 3; }).length : 0;
+  var p1count = data.top_attackers ? data.top_attackers.filter(function(a) { return a.priority === 1; }).length : 0;
+  main.innerHTML =
+    '<div class="kpi-strip">' +
+      '<div class="kpi"><div class="val">' + (data.flows_per_sec||0).toFixed(1) + '</div><div class="lbl">Flows/sec</div></div>' +
+      '<div class="kpi"><div class="val">' + (data.active_attackers||0) + '</div><div class="lbl">Active Attackers</div></div>' +
+      '<div class="kpi danger"><div class="val">' + d3count + '</div><div class="lbl">D3 Active</div></div>' +
+      '<div class="kpi warn"><div class="val">' + p1count + '</div><div class="lbl">P1 Threats</div></div>' +
+      '<div class="kpi ok"><div class="val">' + (data.new_attackers_1h||0) + '</div><div class="lbl">New (1h)</div></div>' +
+    '</div>' +
+    '<div class="chart-row">' +
+      '<div class="chart-wrap"><h3>Capture Depth Distribution</h3><canvas id="depth-chart" height="160"></canvas></div>' +
+      '<div class="chart-wrap"><h3>Top Groups (1h)</h3><canvas id="group-chart" height="160"></canvas></div>' +
+    '</div>' +
+    '<div class="card"><h2>Top 20 Attackers (24h)</h2><div class="tbl-wrap">' + renderAttackerTable(data.top_attackers||[], true) + '</div></div>' +
+    '<div class="card"><h2>Recent Activity</h2><div id="feed">' + renderFeed(audit||[]) + '</div></div>';
+
+  var dd = data.depth_dist || {};
+  var dLabels = ['D0','D1','D2','D3'];
+  var dVals = [dd['0']||0, dd['1']||0, dd['2']||0, dd['3']||0];
+  var dColors = ['#6e7681','#58a6ff','#e3b341','#f85149'];
+  if (_depthChartInst) _depthChartInst.destroy();
+  _depthChartInst = new Chart(document.getElementById('depth-chart'), {
+    type: 'doughnut',
+    data: { labels: dLabels, datasets: [{ data: dVals, backgroundColor: dColors, borderColor: '#21262d', borderWidth: 2 }] },
+    options: { plugins: { legend: { labels: { color: '#e6edf3', font: { size: 11 } } } }, cutout: '60%' }
+  });
+
+  var groups = (data.top_groups||[]).slice(0,6);
+  if (_groupChartInst) _groupChartInst.destroy();
+  _groupChartInst = new Chart(document.getElementById('group-chart'), {
+    type: 'bar',
+    data: {
+      labels: groups.map(function(g) { return (g.group_id||'?').slice(0,12); }),
+      datasets: [{ data: groups.map(function(g) { return g.cnt||0; }), backgroundColor: '#58a6ff88', borderColor: '#58a6ff', borderWidth: 1 }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+        y: { ticks: { color: '#e6edf3', font: { size: 10 } } }
+      }
+    }
+  });
+
+  startRefresh(renderPageOverview, 30);
+}
+
+function renderAttackerTable(rows, compact) {
+  if (!rows.length) return '<div class="empty"><div class="icon">&#x1F4ED;</div>No attacker data</div>';
+  var html = '<table><thead><tr><th>IP</th><th>Group</th><th>Depth</th>' +
+    (compact ? '' : '<th>Priority</th>') +
+    '<th>Sessions 24h</th><th>Targets</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(function(r) {
+    html += '<tr>' +
+      '<td><span class="ip-link" onclick="nav(\'profile\',{ip:\'' + r.ip + '\'})">' + r.ip + '</span></td>' +
+      '<td>' + groupBadge(r.group_id) + '</td>' +
+      '<td>' + depthBadge(r.capture_depth) + '</td>' +
+      (compact ? '' : '<td>' + priorityBadge(r.priority) + '</td>') +
+      '<td>' + (r.sessions_24h||0) + '</td>' +
+      '<td>' + (r.unique_targets||0) + '</td>' +
+      '<td>' + reltime(r.last_seen) + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="btn sm danger" onclick="quickAction(\'d3\',\'' + r.ip + '\')">D3</button> ' +
+        '<button class="btn sm" onclick="quickAction(\'watch72\',\'' + r.ip + '\')">72h</button>' +
+      '</td></tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderFeed(rows) {
+  if (!rows.length) return '<div class="empty"><div class="icon">&#x1F4CB;</div>No recent activity</div>';
+  return rows.map(function(r) {
+    return '<div class="feed-item">' +
+      '<span class="feed-ts">' + ts(r.timestamp) + '</span>' +
+      '<span class="feed-ip" onclick="nav(\'profile\',{ip:\'' + (r.ip||'') + '\'})" style="cursor:pointer;">' + (r.ip||'\u2014') + '</span>' +
+      '<span class="badge">' + (r.action||'?') + '</span>' +
+      '<span class="feed-action" style="color:var(--muted);">' + (r.reason||'').slice(0,60) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ============================================================
+// PAGE: EXPLORER
+// ============================================================
+async function renderPageExplorer(ctx) {
+  ctx = ctx || {};
+  var hours = ctx.hours || _explorerHours;
+  _explorerHours = hours;
+  var grp = ctx.group_id || '';
+  var url = '/data/attackers?hours=' + hours + '&limit=500';
+  if (grp) url += '&group_id=' + encodeURIComponent(grp);
+  var rows = await apiFetch(url);
+  _explorerData = rows || [];
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="filter-bar">' +
+      '<input id="ex-search" placeholder="Filter IP..." oninput="filterExplorer()" style="width:160px;"/>' +
+      '<select id="ex-group" onchange="nav(\'explorer\',{hours:_explorerHours,group_id:this.value})">' +
+        '<option value="">All Groups</option>' +
+        '<option value="RECON"' + (grp=='RECON'?' selected':'') + '>RECON</option>' +
+        '<option value="CREDENTIAL_ATTACK"' + (grp=='CREDENTIAL_ATTACK'?' selected':'') + '>CREDENTIAL_ATTACK</option>' +
+        '<option value="EXPLOIT_DELIVERY"' + (grp=='EXPLOIT_DELIVERY'?' selected':'') + '>EXPLOIT_DELIVERY</option>' +
+        '<option value="INFRASTRUCTURE_ABUSE"' + (grp=='INFRASTRUCTURE_ABUSE'?' selected':'') + '>INFRASTRUCTURE_ABUSE</option>' +
+        '<option value="CAMPAIGN_PROGRESSION"' + (grp=='CAMPAIGN_PROGRESSION'?' selected':'') + '>CAMPAIGN_PROGRESSION</option>' +
+        '<option value="UNCLASSIFIED"' + (grp=='UNCLASSIFIED'?' selected':'') + '>UNCLASSIFIED</option>' +
+      '</select>' +
+      '<select id="ex-depth" onchange="filterExplorer()">' +
+        '<option value="">All Depths</option>' +
+        '<option value="0">D0</option><option value="1">D1</option>' +
+        '<option value="2">D2</option><option value="3">D3</option>' +
+      '</select>' +
+      '<select id="ex-window" onchange="nav(\'explorer\',{hours:this.value,group_id:\'' + grp + '\'})">' +
+        '<option value="1"' + (hours==1?' selected':'') + '>1h</option>' +
+        '<option value="6"' + (hours==6?' selected':'') + '>6h</option>' +
+        '<option value="24"' + (hours==24?' selected':'') + '>24h</option>' +
+        '<option value="168"' + (hours==168?' selected':'') + '>7d</option>' +
+      '</select>' +
+      '<span style="color:var(--muted);font-size:11px;" id="ex-count"></span>' +
+    '</div>' +
+    '<div class="card"><div class="tbl-wrap" id="ex-table">' + renderAttackerTable(_explorerData, false) + '</div></div>';
+  updateExCount(_explorerData.length);
+}
+
+function filterExplorer() {
+  var q = (document.getElementById('ex-search') && document.getElementById('ex-search').value || '').toLowerCase();
+  var grp = ((document.getElementById('ex-group') && document.getElementById('ex-group').value) || '').toLowerCase();
+  var dep = (document.getElementById('ex-depth') && document.getElementById('ex-depth').value) || '';
+  var filtered = _explorerData;
+  if (q) filtered = filtered.filter(function(r) { return r.ip.includes(q); });
+  if (grp) filtered = filtered.filter(function(r) { return (r.group_id||'').toLowerCase().includes(grp); });
+  if (dep !== '') filtered = filtered.filter(function(r) { return String(r.capture_depth) === dep; });
+  var tbl = document.getElementById('ex-table');
+  if (tbl) tbl.innerHTML = renderAttackerTable(filtered, false);
+  updateExCount(filtered.length);
+}
+
+function updateExCount(n) {
+  var el = document.getElementById('ex-count');
+  if (el) el.textContent = (n !== undefined ? n : _explorerData.length) + ' IPs';
+}
+
+// ============================================================
+// PAGE: IP PROFILE
+// ============================================================
+async function renderPageProfile(ip) {
+  if (!ip) {
+    document.getElementById('main').innerHTML =
+      '<div class="card"><h2>IP Profile</h2>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>Enter IP Address</label>' +
+          '<input id="profile-ip-input" placeholder="172.16.3.x" style="width:200px;"/>' +
+        '</div>' +
+        '<div style="align-self:flex-end;"><button class="btn primary" onclick="loadProfile()">Load</button></div>' +
+      '</div></div>';
+    return;
+  }
+  _profileIP = ip;
+  var data = await apiFetch('/data/attacker/' + ip + '?hours=24');
+  var main = document.getElementById('main');
+  if (!data) {
+    main.innerHTML = renderEmpty('IP not found', 'No data for ' + ip + ' in the last 24h') +
+      '<div style="text-align:center;margin-top:12px;"><button class="btn" onclick="nav(\'explorer\')">← Back to Explorer</button></div>';
+    return;
+  }
+  var latestGroup = data.groups && data.groups.length ? data.groups[0] : null;
+  main.innerHTML =
+    '<div style="margin-bottom:10px;"><button class="btn" onclick="nav(\'explorer\')">← Explorer</button></div>' +
+    '<div class="profile-header">' +
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+        '<span style="font-size:20px;font-weight:700;font-family:monospace;">' + ip + '</span>' +
+        (latestGroup ? groupBadge(latestGroup.group_id) : '') +
+        (data.capture_depth !== undefined ? depthBadge(data.capture_depth) : '') +
+        priorityBadge(data.priority) +
+      '</div>' +
+      '<div class="profile-meta">' +
+        '<div class="meta-item"><span class="key">Confidence</span><span class="val">' + (latestGroup ? (latestGroup.confidence*100).toFixed(0)+'%' : '\u2014') + '</span></div>' +
+        '<div class="meta-item"><span class="key">Depth</span><span class="val">' + data.capture_depth + '</span></div>' +
+        '<div class="meta-item"><span class="key">Priority</span><span class="val">P' + data.priority + '</span></div>' +
+        '<div class="meta-item"><span class="key">Expires</span><span class="val">' + (data.expires_at ? ts(data.expires_at) : 'Never') + '</span></div>' +
+        '<div class="meta-item"><span class="key">Hops (24h)</span><span class="val">' + (data.hops||[]).length + '</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="profile-actions">' +
+      '<button class="btn danger" onclick="quickAction(\'d3\',\'' + ip + '\')">Promote D3</button>' +
+      '<button class="btn" onclick="quickAction(\'watch72\',\'' + ip + '\')">Watch 72h (D2)</button>' +
+      '<button class="btn" onclick="nav(\'control\')">+ Annotate</button>' +
+    '</div>' +
+    '<div class="card"><h2>Movement Timeline (' + (data.hops||[]).length + ' hops)</h2><div class="tbl-wrap">' + renderHopsTable(data.hops||[]) + '</div></div>' +
+    '<div class="card"><h2>Group Trajectory</h2>' + renderGroupTrajectory(data.groups||[]) + '</div>' +
+    '<div class="card"><h2>Depth History</h2>' + renderDepthHistory(data.depth_history||[]) + '</div>' +
+    '<div class="card"><h2>Fingerprints</h2>' + renderFingerprints(data.fingerprints||[]) + '</div>';
+}
+
+function loadProfile() {
+  var ip = document.getElementById('profile-ip-input') && document.getElementById('profile-ip-input').value.trim();
+  if (ip) renderPageProfile(ip);
+}
+
+function renderHopsTable(hops) {
+  if (!hops.length) return '<div class="empty"><div class="icon">&#x1F578;&#xFE0F;</div>No movement data</div>';
+  var html = '<table><thead><tr><th>Time</th><th>Target IP</th><th>Port</th><th>Proto</th><th>VLAN</th><th>Pkts&#x2191;</th><th>Pkts&#x2193;</th><th>Bytes</th><th>State</th></tr></thead><tbody>';
+  hops.forEach(function(h) {
+    html += '<tr>' +
+      '<td>' + ts(h.first_ts) + '</td>' +
+      '<td><span class="ip-link" onclick="nav(\'profile\',{ip:\'' + h.target_ip + '\'})">' + h.target_ip + '</span></td>' +
+      '<td>' + h.dst_port + '</td><td>' + (h.app_proto||'\u2014') + '</td>' +
+      '<td>' + (h.vlan_id||0) + '</td><td>' + (h.pkts_fwd||0) + '</td><td>' + (h.pkts_rev||0) + '</td>' +
+      '<td>' + fmtBytes(h.total_bytes||0) + '</td><td>' + (h.conn_state||'\u2014') + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderGroupTrajectory(groups) {
+  if (!groups.length) return '<div class="empty"><div class="icon">&#x1F50D;</div>No group assignments</div>';
+  var html = '<table><thead><tr><th>Group</th><th>Sub-Group</th><th>Confidence</th><th>Window Start</th><th>Window End</th><th>Assigned</th></tr></thead><tbody>';
+  groups.forEach(function(g) {
+    html += '<tr>' +
+      '<td>' + groupBadge(g.group_id) + '</td>' +
+      '<td>' + (g.sub_group_id||'\u2014') + '</td>' +
+      '<td>' + ((g.confidence*100||0).toFixed(0)) + '%</td>' +
+      '<td>' + ts(g.window_start) + '</td>' +
+      '<td>' + ts(g.window_end) + '</td>' +
+      '<td>' + ts(g.timestamp) + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderDepthHistory(history) {
+  if (!history.length) return '<div class="empty"><div class="icon">&#x1F4CA;</div>No depth changes</div>';
+  var html = '<table><thead><tr><th>Change</th><th>Trigger</th><th>By</th><th>Time</th></tr></thead><tbody>';
+  history.forEach(function(d) {
+    html += '<tr>' +
+      '<td>' + depthBadge(d.old_depth) + ' \u2192 ' + depthBadge(d.new_depth) + '</td>' +
+      '<td>' + (d.trigger_reason||'\u2014') + '</td>' +
+      '<td>' + (d.triggered_by||'\u2014') + '</td>' +
+      '<td>' + ts(d.timestamp) + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderFingerprints(fps) {
+  if (!fps.length) return '<div class="empty"><div class="icon">&#x1F510;</div>No fingerprints</div>';
+  var html = '<table><thead><tr><th>Type</th><th>Value</th><th>Freq</th><th>Note</th></tr></thead><tbody>';
+  fps.forEach(function(f) {
+    html += '<tr>' +
+      '<td><span class="badge d1">' + (f.fp_type||'?') + '</span></td>' +
+      '<td style="font-family:monospace;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (f.fp_value||'\u2014') + '</td>' +
+      '<td>' + (f.freq||0) + '</td>' +
+      '<td>' + (f.freq===1?'<span class="badge d3">RARE</span>':'') + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+// ============================================================
+// PAGE: CAMPAIGNS
+// ============================================================
+async function renderPageCampaigns() {
+  var rows = await apiFetch('/data/campaigns?limit=100');
+  var main = document.getElementById('main');
+  if (!rows || !rows.length) {
+    main.innerHTML = '<div class="card">' + renderEmpty('No campaigns', 'Campaign clustering may not be running yet') + '</div>';
+    return;
+  }
+  var html = '<div class="card"><h2>Campaigns (' + rows.length + ')</h2><div class="tbl-wrap"><table>' +
+    '<thead><tr><th>Campaign ID</th><th>Total IPs</th><th>Active 24h</th><th>First Seen</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(function(c) {
+    html += '<tr>' +
+      '<td style="font-family:monospace;">' + c.campaign_id + '</td>' +
+      '<td>' + (c.total_ips||0) + '</td>' +
+      '<td>' + (c.active_24h||0) + '</td>' +
+      '<td>' + ts(c.first_seen) + '</td>' +
+      '<td>' + ts(c.last_seen) + '</td>' +
+      '<td>' +
+        '<select id="cact-' + c.campaign_id + '" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:11px;">' +
+          '<option value="">Action...</option>' +
+          '<option value="watch72">Watch 72h (D2)</option>' +
+          '<option value="block24">Block 24h (D3)</option>' +
+          '<option value="d3">Promote D3</option>' +
+        '</select> ' +
+        '<button class="btn sm" onclick="campaignAction(\'' + c.campaign_id + '\')">Go</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  main.innerHTML = html;
+}
+
+async function campaignAction(cid) {
+  var sel = document.getElementById('cact-' + cid);
+  var action = sel && sel.value;
+  if (!action) return showToast('Select an action first', 'err');
+  var ok = await confirmModal('Bulk Campaign Action', '<p>Apply <b>' + action + '</b> to all IPs in campaign <b>' + cid + '</b>?</p>');
+  if (!ok) return;
+  try {
+    var depth = 2, ttl = null;
+    if (action === 'd3') { depth = 3; }
+    else if (action === 'block24') { depth = 3; ttl = new Date(Date.now() + 86400000).toISOString(); }
+    else if (action === 'watch72') { depth = 2; ttl = new Date(Date.now() + 259200000).toISOString(); }
+    var res = await apiPost('/action/bulk', {
+      action: 'upsert', campaign_id: cid,
+      ip_list: [], capture_depth: depth, priority: 1,
+      reason: 'campaign_action_' + action, source: 'analyst', actor: 'soc-ui',
+      expires_at: ttl,
+    });
+    showToast('Campaign action OK: ' + res.message, 'ok');
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// PAGE: CONTROL PLANE
+// ============================================================
+function renderPageControl() {
+  document.getElementById('main').innerHTML =
+    '<div class="card">' +
+      '<div class="templates">' +
+        '<span class="lbl">Quick:</span>' +
+        '<button class="btn sm" onclick="setTemplate(\'watch72\')">Watch 72h (D2)</button>' +
+        '<button class="btn sm" onclick="setTemplate(\'d3_48\')">D3 48h</button>' +
+        '<button class="btn sm danger" onclick="setTemplate(\'block24\')">Block 24h</button>' +
+      '</div>' +
+      '<div class="tab-strip">' +
+        '<div class="tab' + (_controlTab==='upsert'?' active':'') + '" onclick="switchTab(\'upsert\')">Upsert</div>' +
+        '<div class="tab' + (_controlTab==='delete'?' active':'') + '" onclick="switchTab(\'delete\')">Delete</div>' +
+        '<div class="tab' + (_controlTab==='annotate'?' active':'') + '" onclick="switchTab(\'annotate\')">Annotate</div>' +
+        '<div class="tab' + (_controlTab==='bulk'?' active':'') + '" onclick="switchTab(\'bulk\')">Bulk</div>' +
+        '<div class="tab' + (_controlTab==='watchlist'?' active':'') + '" onclick="switchTab(\'watchlist\')">Watchlist</div>' +
+      '</div>' +
+      '<div id="tab-content"></div>' +
+    '</div>';
+  renderTabContent();
+}
+
+function switchTab(tab) {
+  _controlTab = tab;
+  document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(el) {
+    if (el.textContent.toLowerCase().startsWith(tab)) el.classList.add('active');
+  });
+  renderTabContent();
+}
+
+function setTemplate(t) {
+  _controlTab = 'upsert';
+  renderPageControl();
+  setTimeout(function() {
+    var d = document.getElementById('upsert-depth');
+    var p = document.getElementById('upsert-priority');
+    var r = document.getElementById('upsert-reason');
+    var e = document.getElementById('upsert-expires');
+    if (t === 'watch72') {
+      if (d) d.value = '2'; if (p) p.value = '2';
+      if (r) r.value = 'watch_72h'; if (e) e.value = new Date(Date.now()+259200000).toISOString().slice(0,19)+'Z';
+    } else if (t === 'd3_48') {
+      if (d) d.value = '3'; if (p) p.value = '1';
+      if (r) r.value = 'd3_48h'; if (e) e.value = new Date(Date.now()+172800000).toISOString().slice(0,19)+'Z';
+    } else if (t === 'block24') {
+      if (d) d.value = '3'; if (p) p.value = '1';
+      if (r) r.value = 'block_24h'; if (e) e.value = new Date(Date.now()+86400000).toISOString().slice(0,19)+'Z';
+    }
+  }, 50);
+}
+
+function renderTabContent() {
+  var el = document.getElementById('tab-content');
+  if (!el) return;
+  if (_controlTab === 'upsert') {
+    el.innerHTML =
+      '<div class="form-row">' +
+        '<div class="form-group" style="flex:2;"><label>IP Address</label><input id="upsert-ip" placeholder="172.16.3.x"/></div>' +
+        '<div class="form-group"><label>Depth</label><select id="upsert-depth"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></div>' +
+        '<div class="form-group"><label>Priority</label><select id="upsert-priority"><option>1</option><option selected>2</option><option>3</option></select></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>Expires (RFC3339)</label><input id="upsert-expires" placeholder="2026-03-01T00:00:00Z"/></div>' +
+        '<div class="form-group" style="flex:2;"><label>Reason</label><input id="upsert-reason" value="manual_ui_action"/></div>' +
+      '</div>' +
+      '<button class="btn primary" onclick="doUpsert()">Upsert</button>' +
+      '<div id="upsert-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>';
+  } else if (_controlTab === 'delete') {
+    el.innerHTML =
+      '<div class="form-row">' +
+        '<div class="form-group"><label>IP Address</label><input id="del-ip" placeholder="172.16.3.x"/></div>' +
+        '<div class="form-group"><label>Reason</label><input id="del-reason" value="manual_ui_delete"/></div>' +
+      '</div>' +
+      '<button class="btn danger" onclick="doDelete()">Delete</button>' +
+      '<div id="del-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>';
+  } else if (_controlTab === 'annotate') {
+    el.innerHTML =
+      '<div class="form-row">' +
+        '<div class="form-group"><label>IP Address</label><input id="ann-ip" placeholder="172.16.3.x"/></div>' +
+        '<div class="form-group"><label>Tags (comma-separated)</label><input id="ann-tags" placeholder="pivot,rare-ja3"/></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>Note</label><textarea id="ann-note" placeholder="analyst context..."></textarea></div>' +
+      '</div>' +
+      '<button class="btn" onclick="doAnnotate()">Annotate</button>' +
+      '<div id="ann-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>';
+  } else if (_controlTab === 'bulk') {
+    el.innerHTML =
+      '<div class="form-row">' +
+        '<div class="form-group"><label>Action</label><select id="bulk-action"><option value="upsert">upsert</option><option value="delete">delete</option></select></div>' +
+        '<div class="form-group"><label>Depth</label><select id="bulk-depth"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></div>' +
+        '<div class="form-group"><label>Priority</label><select id="bulk-priority"><option>1</option><option selected>2</option><option>3</option></select></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>Campaign ID</label><input id="bulk-cid" placeholder="cluster_mysql_0x3a"/></div>' +
+        '<div class="form-group"><label>Reason</label><input id="bulk-reason" value="manual_ui_bulk"/></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>IPs (comma or newline)</label><textarea id="bulk-ips" placeholder="172.16.3.1&#10;172.16.3.2"></textarea></div>' +
+      '</div>' +
+      '<button class="btn" onclick="doBulk()">Run Bulk</button>' +
+      '<div id="bulk-status" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>';
+  } else if (_controlTab === 'watchlist') {
+    el.innerHTML = '<div style="color:var(--muted);padding:10px;">Loading watchlist...</div>';
+    loadWatchlistTab();
+  }
+  if (_profileIP) {
+    var ipInput = document.getElementById('upsert-ip') || document.getElementById('del-ip') || document.getElementById('ann-ip');
+    if (ipInput && !ipInput.value) ipInput.value = _profileIP;
+  }
+}
+
+async function loadWatchlistTab() {
+  var rows = await apiFetch('/watchlist?limit=500');
+  var el = document.getElementById('tab-content');
+  if (!el) return;
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">&#x1F4CB;</div>Watchlist is empty</div>';
+    return;
+  }
+  el.innerHTML =
+    '<div class="filter-bar"><input id="wl-search" placeholder="Filter IP..." oninput="filterWatchlist()" style="width:200px;"/></div>' +
+    '<div class="tbl-wrap" id="wl-table">' + renderWatchlistTable(rows) + '</div>';
+  window._wlRows = rows;
+}
+
+function filterWatchlist() {
+  var q = (document.getElementById('wl-search') && document.getElementById('wl-search').value || '').toLowerCase();
+  var rows = (window._wlRows||[]).filter(function(r) { return r.ip.includes(q); });
+  var el = document.getElementById('wl-table');
+  if (el) el.innerHTML = renderWatchlistTable(rows);
+}
+
+function renderWatchlistTable(rows) {
+  var html = '<table><thead><tr><th>IP</th><th>Depth</th><th>Priority</th><th>Group</th><th>Source</th><th>Expires</th><th>Updated</th></tr></thead><tbody>';
+  rows.forEach(function(r) {
+    html += '<tr>' +
+      '<td><span class="ip-link" onclick="nav(\'profile\',{ip:\'' + r.ip + '\'})">' + r.ip + '</span></td>' +
+      '<td>' + depthBadge(r.capture_depth) + '</td>' +
+      '<td>' + priorityBadge(r.priority) + '</td>' +
+      '<td>' + (r.group_id ? groupBadge(r.group_id) : '\u2014') + '</td>' +
+      '<td>' + (r.source||'\u2014') + '</td>' +
+      '<td>' + (r.expires_at_epoch ? ts(r.expires_at_epoch) : 'Never') + '</td>' +
+      '<td>' + (r.updated_at_epoch ? reltime(r.updated_at_epoch) : '\u2014') + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+async function doUpsert() {
+  var payload = {
+    ip: document.getElementById('upsert-ip').value.trim(),
+    capture_depth: Number(document.getElementById('upsert-depth').value),
+    priority: Number(document.getElementById('upsert-priority').value),
+    reason: document.getElementById('upsert-reason').value.trim() || 'manual_ui_action',
+    source: 'analyst', actor: 'soc-ui',
+    expires_at: (document.getElementById('upsert-expires') && document.getElementById('upsert-expires').value.trim()) || null,
+  };
+  var out = document.getElementById('upsert-status');
+  try {
+    var res = await apiPost('/watchlist/upsert', payload);
+    out.style.color = 'var(--ok)';
+    out.textContent = 'OK: ' + res.message;
+    showToast('Upserted ' + payload.ip, 'ok');
+  } catch(e) {
+    out.style.color = 'var(--danger)';
+    out.textContent = 'ERROR: ' + e.message;
+    showToast('Upsert failed: ' + e.message, 'err');
+  }
+}
+
+async function doDelete() {
+  var payload = {
+    ip: document.getElementById('del-ip').value.trim(),
+    reason: document.getElementById('del-reason').value.trim() || 'manual_ui_delete',
+    actor: 'soc-ui',
+  };
+  var ok = await confirmModal('Delete from Watchlist', 'Remove <b>' + payload.ip + '</b>?');
+  if (!ok) return;
+  var out = document.getElementById('del-status');
+  try {
+    var res = await apiPost('/watchlist/delete', payload);
+    out.style.color = 'var(--ok)'; out.textContent = 'OK: ' + res.message;
+    showToast('Deleted ' + payload.ip, 'ok');
+  } catch(e) {
+    out.style.color = 'var(--danger)'; out.textContent = 'ERROR: ' + e.message;
+    showToast('Delete failed: ' + e.message, 'err');
+  }
+}
+
+async function doAnnotate() {
+  var tagsRaw = document.getElementById('ann-tags').value;
+  var payload = {
+    ip: document.getElementById('ann-ip').value.trim(),
+    note: document.getElementById('ann-note').value.trim(),
+    tags: tagsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean),
+    actor: 'soc-ui',
+  };
+  var out = document.getElementById('ann-status');
+  try {
+    var res = await apiPost('/action/annotate', payload);
+    out.style.color = 'var(--ok)'; out.textContent = 'OK: ' + res.message;
+    showToast('Annotated ' + payload.ip, 'ok');
+  } catch(e) {
+    out.style.color = 'var(--danger)'; out.textContent = 'ERROR: ' + e.message;
+  }
+}
+
+async function doBulk() {
+  var raw = document.getElementById('bulk-ips').value;
+  var ips = raw.split(/[\n,\s]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+  var action = document.getElementById('bulk-action').value;
+  var ok = await confirmModal('Bulk Action', 'Run <b>' + action + '</b> on <b>' + ips.length + '</b> IPs?');
+  if (!ok) return;
+  var payload = {
+    action: action, ip_list: ips,
+    campaign_id: (document.getElementById('bulk-cid') && document.getElementById('bulk-cid').value.trim()) || null,
+    reason: (document.getElementById('bulk-reason') && document.getElementById('bulk-reason').value.trim()) || 'manual_ui_bulk',
+    source: 'analyst', actor: 'soc-ui',
+    capture_depth: action === 'upsert' ? Number(document.getElementById('bulk-depth').value) : null,
+    priority: action === 'upsert' ? Number(document.getElementById('bulk-priority').value) : null,
+    expires_at: null,
+  };
+  var out = document.getElementById('bulk-status');
+  try {
+    var res = await apiPost('/action/bulk', payload);
+    out.style.color = 'var(--ok)';
+    out.textContent = 'OK: ' + res.message + ' processed=' + res.processed + ' skipped=' + res.skipped;
+    showToast('Bulk ' + action + ': ' + res.processed + ' processed', 'ok');
+  } catch(e) {
+    out.style.color = 'var(--danger)'; out.textContent = 'ERROR: ' + e.message;
+    showToast('Bulk failed: ' + e.message, 'err');
+  }
+}
+
+async function quickAction(type, ip) {
+  var depth = 2, priority = 2, reason = 'quick_action', expires = null;
+  if (type === 'd3') { depth = 3; priority = 1; reason = 'promote_d3'; }
+  else if (type === 'watch72') { depth = 2; priority = 2; reason = 'watch_72h'; expires = new Date(Date.now()+259200000).toISOString(); }
+  var ok = await confirmModal('Quick Action', 'Apply <b>' + type + '</b> to <b>' + ip + '</b>?');
+  if (!ok) return;
+  try {
+    await apiPost('/watchlist/upsert', { ip: ip, capture_depth: depth, priority: priority, reason: reason, source: 'analyst', actor: 'soc-ui', expires_at: expires });
+    showToast(type + ' applied to ' + ip, 'ok');
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// PAGE: AUDIT LOG
+// ============================================================
+async function renderPageAudit() {
+  var rows = await apiFetch('/data/audit?limit=200');
+  var main = document.getElementById('main');
+  main.innerHTML =
+    '<div class="card"><h2>Audit Log</h2>' +
+      '<div class="filter-bar">' +
+        '<select id="aud-source" onchange="filterAudit()">' +
+          '<option value="">All Sources</option>' +
+          '<option value="analyst">Analyst</option>' +
+          '<option value="system">System</option>' +
+        '</select>' +
+        '<input id="aud-ip" placeholder="Filter IP..." oninput="filterAudit()" style="width:160px;"/>' +
+        '<input id="aud-reqid" placeholder="Request ID lookup..." oninput="filterAudit()" style="width:220px;"/>' +
+        '<span style="color:var(--muted);font-size:11px;" id="aud-count"></span>' +
+      '</div>' +
+      '<div class="tbl-wrap" id="aud-table">' + renderAuditTable(rows||[]) + '</div>' +
+    '</div>';
+  window._auditRows = rows || [];
+  var cnt = document.getElementById('aud-count');
+  if (cnt) cnt.textContent = (rows||[]).length + ' entries';
+}
+
+function filterAudit() {
+  var src = (document.getElementById('aud-source') && document.getElementById('aud-source').value) || '';
+  var ip = ((document.getElementById('aud-ip') && document.getElementById('aud-ip').value) || '').toLowerCase();
+  var rid = ((document.getElementById('aud-reqid') && document.getElementById('aud-reqid').value) || '').toLowerCase();
+  var rows = window._auditRows || [];
+  if (src) rows = rows.filter(function(r) { return r.source === src; });
+  if (ip) rows = rows.filter(function(r) { return (r.ip||'').includes(ip); });
+  if (rid) rows = rows.filter(function(r) { return (r.request_id||'').toLowerCase().includes(rid); });
+  var el = document.getElementById('aud-table');
+  if (el) el.innerHTML = renderAuditTable(rows, rid);
+  var cnt = document.getElementById('aud-count');
+  if (cnt) cnt.textContent = rows.length + ' entries';
+}
+
+function renderAuditTable(rows, highlightId) {
+  highlightId = highlightId || '';
+  if (!rows.length) return '<div class="empty"><div class="icon">&#x1F4CB;</div>No audit entries</div>';
+  var html = '<table><thead><tr><th>Time</th><th>IP</th><th>Action</th><th>Before</th><th>After</th><th>Actor</th><th>Reason</th><th>Req ID</th></tr></thead><tbody>';
+  rows.forEach(function(r) {
+    var hi = highlightId && (r.request_id||'').toLowerCase().includes(highlightId.toLowerCase());
+    html += '<tr style="' + (hi ? 'background:rgba(88,166,255,.1);' : '') + '">' +
+      '<td style="white-space:nowrap;">' + ts(r.timestamp) + '</td>' +
+      '<td><span class="ip-link" onclick="nav(\'profile\',{ip:\'' + (r.ip||'') + '\'})">' + (r.ip||'\u2014') + '</span></td>' +
+      '<td><span class="badge d1">' + (r.action||'?') + '</span></td>' +
+      '<td>' + (r.old_val||'\u2014') + '</td>' +
+      '<td>' + (r.new_val||'\u2014') + '</td>' +
+      '<td>' + (r.actor||'\u2014') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.reason||'') + '">' + (r.reason||'').slice(0,40) + '</td>' +
+      '<td style="font-family:monospace;font-size:10px;color:var(--muted);" title="' + (r.request_id||'') + '">' + (r.request_id||'').slice(0,12) + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+// ============================================================
+// PAGE: VM STATUS
+// ============================================================
+async function renderPageVMs() {
+  var main = document.getElementById('main');
+
+  // Fetch VM list and Hunter-AIO status in parallel
+  var vmsP = apiFetch('/vms');
+  var aioP = apiFetch('/hunter-aio/status');
+  var vms = await vmsP;
+  var aio = await aioP;
+
+  var html = '';
+
+  // Hunter-AIO banner
+  html += renderAIOBanner(aio);
+
+  if (!vms) {
+    html += '<div class="card">' + renderEmpty('VM data unavailable', 'Proxmox API may be unreachable') + '</div>';
+    main.innerHTML = html;
+    return;
+  }
+  var running = vms.filter(function(v) { return v.status === 'running'; }).length;
+  var totalFlows = vms.reduce(function(s,v) { return s+(v.flows_24h||0); }, 0);
+  var p1vms = vms.filter(function(v) { return (v.attackers_24h||0) > 10; }).length;
+  html +=
+    '<div class="kpi-strip" style="grid-template-columns:repeat(3,1fr);max-width:500px;margin-bottom:16px;">' +
+      '<div class="kpi ok"><div class="val">' + running + '/' + vms.length + '</div><div class="lbl">Running</div></div>' +
+      '<div class="kpi"><div class="val">' + totalFlows.toLocaleString() + '</div><div class="lbl">Flows 24h</div></div>' +
+      '<div class="kpi warn"><div class="val">' + p1vms + '</div><div class="lbl">High-traffic VMs</div></div>' +
+    '</div>' +
+    '<div class="vm-grid">';
+  vms.forEach(function(v) { html += renderVMCard(v); });
+  html += '</div>';
+  main.innerHTML = html;
+  startRefresh(renderPageVMs, 30);
+}
+
+function renderAIOBanner(aio) {
+  if (!aio) {
+    return '<div class="aio-banner err">' +
+      '<div class="aio-icon err">&#x26A0;</div>' +
+      '<div class="aio-info">' +
+        '<div class="aio-title">Hunter-AIO <span class="badge stopped">UNREACHABLE</span></div>' +
+        '<div class="aio-subtitle">192.168.0.113:2222 &mdash; Could not fetch status</div>' +
+      '</div></div>';
+  }
+
+  if (!aio.reachable) {
+    return '<div class="aio-banner err">' +
+      '<div class="aio-icon err">&#x26A0;</div>' +
+      '<div class="aio-info">' +
+        '<div class="aio-title">Hunter-AIO <span class="badge stopped">OFFLINE</span></div>' +
+        '<div class="aio-subtitle">192.168.0.113:2222 &mdash; SSH connection failed</div>' +
+      '</div></div>';
+  }
+
+  var svcs = aio.services || [];
+  var allUp = svcs.every(function(s) { return s.active; });
+  var downCount = svcs.filter(function(s) { return !s.active; }).length;
+  var dropsOk = (aio.ring_drops || 0) === 0;
+  var bannerClass = allUp && dropsOk ? 'ok' : (downCount > 2 ? 'err' : 'warn');
+  var iconClass = bannerClass;
+  var icon = allUp ? '&#x1F6E1;' : '&#x26A0;';  // shield vs warning
+
+  var modeLabel = (aio.capture_mode || 'unknown').toUpperCase();
+  var modeBadge = aio.capture_mode === 'honeypot' ? 'running' :
+                  aio.capture_mode === 'all' ? 'badge d3' : 'badge d1';
+
+  var ramGB = aio.ram_total_mb >= 1024
+    ? (aio.ram_used_mb / 1024).toFixed(1) + '/' + (aio.ram_total_mb / 1024).toFixed(0) + ' GB'
+    : aio.ram_used_mb + '/' + aio.ram_total_mb + ' MB';
+
+  var html = '<div class="aio-banner ' + bannerClass + '">' +
+    '<div class="aio-icon ' + iconClass + '">' + icon + '</div>' +
+    '<div class="aio-info">' +
+      '<div class="aio-title">Hunter-AIO' +
+        ' <span class="badge ' + (allUp ? 'running' : 'stopped') + '">' + (allUp ? 'ALL SERVICES UP' : downCount + ' DOWN') + '</span>' +
+        ' <span class="badge ' + modeBadge + '">' + modeLabel + '</span>' +
+      '</div>' +
+      '<div class="aio-subtitle">192.168.0.113:2222 &mdash; Uptime ' + fmtUptime(aio.uptime_s) + ' &mdash; RAM ' + ramGB + '</div>' +
+      '<div class="aio-stats">' +
+        '<div class="aio-stat"><div class="val">' + (aio.pps || 0).toLocaleString() + '</div><div class="lbl">PPS</div></div>' +
+        '<div class="aio-stat ' + (dropsOk ? 'ok' : 'danger') + '"><div class="val">' + (aio.ring_drops || 0).toLocaleString() + '</div><div class="lbl">Ring Drops</div></div>' +
+        '<div class="aio-stat"><div class="val">' + (aio.flows_1h || 0).toLocaleString() + '</div><div class="lbl">Flows/1h</div></div>' +
+        '<div class="aio-stat"><div class="val">' + (aio.xgb_predictions_1h || 0).toLocaleString() + '</div><div class="lbl">XGB Scores/1h</div></div>' +
+        '<div class="aio-stat ' + ((aio.xgb_attacks_1h||0) > 0 ? 'warn' : '') + '"><div class="val">' + (aio.xgb_attacks_1h || 0).toLocaleString() + '</div><div class="lbl">XGB Attacks/1h</div></div>' +
+        '<div class="aio-stat"><div class="val">' + (aio.watchlist_total || 0).toLocaleString() + '</div><div class="lbl">Watchlist IPs</div></div>' +
+      '</div>' +
+      '<div class="aio-services">' +
+        svcs.map(function(s) {
+          return '<div class="aio-svc ' + (s.active ? '' : 'down') + '">' +
+            '<div class="svc-dot"></div>' + s.name +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function renderVMCard(v) {
+  var dotColor = v.status === 'running' ? 'var(--ok)' : v.status === 'stopped' ? 'var(--danger)' : 'var(--subtle)';
+  var ramGB = (v.ram_total_mb||0) >= 1024
+    ? ((v.ram_used_mb||0)/1024).toFixed(1) + '/' + ((v.ram_total_mb||0)/1024).toFixed(0) + ' GB'
+    : (v.ram_used_mb||0) + '/' + (v.ram_total_mb||0) + ' MB';
+  var svcBadges = (v.services||'').split(',').map(function(s) {
+    return '<span class="badge grp-other" style="font-size:9px;">' + s.trim() + '</span>';
+  }).join(' ');
+  return '<div class="vm-card" id="vmcard-' + v.vmid + '">' +
+    '<div class="vm-card-header">' +
+      '<div class="vm-dot" style="background:' + dotColor + ';"></div>' +
+      '<span class="vm-name">' + (v.name||'VM'+v.vmid) + '</span>' +
+      '<span class="badge ' + (v.status==='running'?'running':v.status==='stopped'?'stopped':'unknown') + '">' + (v.status||'unknown') + '</span>' +
+      '<span style="margin-left:auto;font-size:10px;color:var(--muted);">' + (v.os||'') + '</span>' +
+    '</div>' +
+    '<div style="margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap;">' + svcBadges + '</div>' +
+    '<div class="vm-metrics">' +
+      'CPU <span>' + (v.cpu_pct||0).toFixed(1) + '%</span> ' +
+      'RAM <span>' + ramGB + '</span> ' +
+      'Uptime <span>' + fmtUptime(v.uptime_s) + '</span>' +
+    '</div>' +
+    '<div class="vm-metrics">' +
+      'Flows 24h <span style="color:var(--accent);">' + (v.flows_24h||0).toLocaleString() + '</span> ' +
+      'Attackers <span style="color:' + ((v.attackers_24h||0)>10?'var(--warn)':'var(--text)') + ';">' + (v.attackers_24h||0) + '</span>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">' +
+      'LAN: <span style="color:var(--text);">' + v.lan_ip + '</span> &nbsp;|&nbsp; ' +
+      'Public: <span style="color:var(--text);">' + v.pub_ip + '</span>' +
+    '</div>' +
+    '<div class="vm-footer">' +
+      '<button class="btn sm" onclick="toggleVMEvents(' + v.vmid + ',\'' + v.name + '\')">Recent Events &#x25BC;</button>' +
+      '<button class="btn sm danger" onclick="rebootVM(' + v.vmid + ',\'' + v.name + '\')">Reboot</button>' +
+    '</div>' +
+    '<div class="vm-events" id="vmevents-' + v.vmid + '">' +
+      '<div style="color:var(--muted);font-size:11px;">Loading events...</div>' +
+    '</div>' +
+  '</div>';
+}
+
+async function toggleVMEvents(vmid, name) {
+  var panel = document.getElementById('vmevents-' + vmid);
+  if (!panel) return;
+  if (panel.classList.toggle('open')) {
+    var events = await apiFetch('/vms/' + vmid + '/events');
+    if (!events || !events.length) {
+      panel.innerHTML = '<div class="empty" style="padding:16px;"><div class="icon">&#x1F4ED;</div>No evidence events. Is Winlure/syslog ingest running?</div>';
+      return;
+    }
+    var html = '<table style="font-size:11px;"><thead><tr><th>Time</th><th>Src IP</th><th>Event Type</th><th>Detail</th></tr></thead><tbody>';
+    events.slice(0,20).forEach(function(e) {
+      html += '<tr>' +
+        '<td style="white-space:nowrap;">' + ts(e.ts) + '</td>' +
+        '<td><span class="ip-link" onclick="nav(\'profile\',{ip:\'' + e.src_ip + '\'})">' + e.src_ip + '</span></td>' +
+        '<td><span class="badge d2">' + (e.event_type||'?') + '</span></td>' +
+        '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (e.event_detail||'\u2014') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+    panel.innerHTML = html;
+  }
+}
+
+async function rebootVM(vmid, name) {
+  var reasonInput = '<div class="form-group" style="margin-top:8px;"><label>Reason</label><input id="reboot-reason" value="manual_reboot" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px;width:100%;"/></div>';
+  var ok = await confirmModal('Reboot ' + name + ' (VMID ' + vmid + ')?', '<p>This will immediately reboot the VM.</p>' + reasonInput);
+  if (!ok) return;
+  var reason = (document.getElementById('reboot-reason') && document.getElementById('reboot-reason').value) || 'manual_reboot';
+  try {
+    var res = await apiPost('/vms/' + vmid + '/reboot', { reason: reason, actor: 'soc-ui' });
+    showToast(res.message, 'ok');
+    setTimeout(renderPageVMs, 15000);
+  } catch(e) { showToast('Reboot failed: ' + e.message, 'err'); }
+}
+
+// ============================================================
+// EMPTY STATE HELPER
+// ============================================================
+function renderEmpty(title, sub) {
+  sub = sub || '';
+  return '<div class="empty"><div class="icon">&#x1F4ED;</div>' +
+    '<div style="font-size:14px;color:var(--text);margin-bottom:4px;">' + title + '</div>' +
+    (sub ? '<div style="font-size:11px;">' + sub + '</div>' : '') +
+  '</div>';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+checkHealth();
+setInterval(checkHealth, 60000);
+nav('overview');
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+[Unit]
+Description=DFI2 Clean Traffic Capture — Watchlist-filtered SPAN
+After=network.target clickhouse-server.service
+Wants=clickhouse-server.service
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/dfi-hunter/env_clean
+ExecStart=/usr/bin/python3 -m hunter.hunter
+WorkingDirectory=/opt/dfi2
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

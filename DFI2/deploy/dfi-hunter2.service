@@ -1,0 +1,17 @@
+[Unit]
+Description=DFI2 Hunter - ClickHouse-backed SPAN Tracker
+After=network-online.target clickhouse-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/dfi-hunter/env2
+ExecStart=/usr/bin/python3 -m hunter.hunter
+WorkingDirectory=/opt/dfi2
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

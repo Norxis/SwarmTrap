@@ -1,0 +1,19 @@
+[Unit]
+Description=WinHunt Poller — pulls agent data into ClickHouse
+After=network.target clickhouse-server.service
+Wants=clickhouse-server.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/winhunt/poller.py --interval 30
+Environment=WH_AGENT_IP=172.16.3.160
+Environment=WH_AGENT_PORT=9200
+Environment=WH_CH_HOST=localhost
+Environment=WH_CH_PORT=8123
+Environment=WH_CH_DB=dfi
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

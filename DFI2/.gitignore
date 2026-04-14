@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.Zone.Identifier
+node_modules/
+dist/
+.env
+*.db
+*.sqlite
+*.db-shm
+*.db-wal
+venv/
+.venv/

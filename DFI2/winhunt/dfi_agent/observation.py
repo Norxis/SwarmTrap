@@ -1,0 +1,70 @@
+"""Observation type taxonomy for the enriched evidence pipeline.
+
+Each observation maps a detected activity to a category used for
+kill-chain labeling and session classification.
+"""
+from __future__ import annotations
+
+# Observation types — used in the observations buffer table
+LOGIN_SUCCESS = "login_success"
+LOGIN_FAILURE = "login_failure"
+COMMAND_EXEC = "command_exec"
+SUSPICIOUS_COMMAND = "suspicious_command"
+FILE_WRITE = "file_write"
+FILE_READ = "file_read"
+FILE_DELETE = "file_delete"
+PROCESS_SPAWN = "process_spawn"
+SERVICE_INSTALL = "service_install"
+SCHEDULED_TASK = "scheduled_task"
+PRIVILEGE_ESCALATION = "priv_escalation"
+LATERAL_MOVEMENT = "lateral_movement"
+OUTBOUND_CONNECTION = "outbound_connection"
+DNS_QUERY = "dns_query"
+CREDENTIAL_ACCESS = "credential_access"
+EVASION = "evasion"
+DATA_EXFILTRATION = "data_exfiltration"
+NETWORK_LISTENER = "network_listener"
+MEMORY_INJECTION = "memory_injection"
+HONEYPOT_DETECTION = "honeypot_detection"
+BREADCRUMB_CONSUMED = "breadcrumb_consumed"
+
+ALL_TYPES = {
+    LOGIN_SUCCESS, LOGIN_FAILURE, COMMAND_EXEC, SUSPICIOUS_COMMAND,
+    FILE_WRITE, FILE_READ, FILE_DELETE, PROCESS_SPAWN,
+    SERVICE_INSTALL, SCHEDULED_TASK, PRIVILEGE_ESCALATION,
+    LATERAL_MOVEMENT, OUTBOUND_CONNECTION, DNS_QUERY,
+    CREDENTIAL_ACCESS, EVASION, DATA_EXFILTRATION,
+    NETWORK_LISTENER, MEMORY_INJECTION, HONEYPOT_DETECTION,
+    BREADCRUMB_CONSUMED,
+}
+
+# Priority levels for observation dispatch
+PRIORITY_IMMEDIATE = "immediate"
+PRIORITY_HIGH = "high"
+PRIORITY_NORMAL = "normal"
+PRIORITY_LOW = "low"
+
+# Observation type → default priority mapping
+TYPE_PRIORITY: dict[str, str] = {
+    LOGIN_SUCCESS: PRIORITY_IMMEDIATE,
+    LOGIN_FAILURE: PRIORITY_NORMAL,
+    COMMAND_EXEC: PRIORITY_NORMAL,
+    SUSPICIOUS_COMMAND: PRIORITY_HIGH,
+    FILE_WRITE: PRIORITY_NORMAL,
+    FILE_READ: PRIORITY_LOW,
+    FILE_DELETE: PRIORITY_HIGH,
+    PROCESS_SPAWN: PRIORITY_NORMAL,
+    SERVICE_INSTALL: PRIORITY_HIGH,
+    SCHEDULED_TASK: PRIORITY_HIGH,
+    PRIVILEGE_ESCALATION: PRIORITY_IMMEDIATE,
+    LATERAL_MOVEMENT: PRIORITY_IMMEDIATE,
+    OUTBOUND_CONNECTION: PRIORITY_IMMEDIATE,
+    DNS_QUERY: PRIORITY_LOW,
+    CREDENTIAL_ACCESS: PRIORITY_IMMEDIATE,
+    EVASION: PRIORITY_HIGH,
+    DATA_EXFILTRATION: PRIORITY_IMMEDIATE,
+    NETWORK_LISTENER: PRIORITY_HIGH,
+    MEMORY_INJECTION: PRIORITY_IMMEDIATE,
+    HONEYPOT_DETECTION: PRIORITY_HIGH,
+    BREADCRUMB_CONSUMED: PRIORITY_IMMEDIATE,
+}

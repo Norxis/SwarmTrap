@@ -1,0 +1,547 @@
+# WIN-EVENT-C (Master)
+
+Version: 2.1
+Date: 2026-02-26
+Status: Canonical Windows Event Master — site-wide reference for all DFI projects
+
+This file is the SINGLE SOURCE OF TRUTH for Windows event handling across:
+- `DFI2/winhunt/dfi_agent/evidence.py` (runtime agent)
+- `DFI2/labeler/evidence_ingest.py` (labeler pipeline)
+- `DFI/Proxmox-V7/Hunter-v7/09_log_db_daemon.py` (log daemon)
+- `DFI/files/dfi_extract_sensor_v7.py` (WinRM extraction)
+- `DFI2/winhunt/WIN-EVENT-G.md` / `DFI_Windows_Attack_EventIDs.md` (reference list)
+- `DFI2/Phase6_Evidence_Pipeline.md` (pipeline spec)
+
+Copies kept at:
+- `~/DFI2/winhunt/WIN-EVENT-C` (primary)
+- `~/ai-shared/WIN-EVENT-C` (site-wide reference)
+- `~/.claude/projects/-home-colo8gent/memory/win_event_c.md` (Claude memory)
+
+## 1) Master Principles
+
+- Honeypot rule: successful remote auth is hostile unless source is explicitly allowlisted.
+- Label sequence: `RECON -> KNOCK -> BRUTEFORCE -> EXPLOIT` using correlated evidence windows.
+- Context/high-volume events are corroborative, not standalone malicious triggers.
+- Preserve raw fields and normalized fields for relabeling.
+
+## 2) Evidence Bit Canon
+
+| Bit | Hex | Name | Description |
+|-----|-----|------|-------------|
+| 0 | `0x01` | auth_failure | Failed authentication |
+| 1 | `0x02` | auth_success | Successful authentication |
+| 2 | `0x04` | process_create | Process creation (benign) |
+| 3 | `0x08` | service_or_task_install | Service/task persistence |
+| 4 | `0x10` | suspicious_or_tamper | Suspicious command / tamper / evasion |
+| 5 | `0x20` | file_download | File download (raw bit) |
+| 4+5 | `0x30` | suspicious + file_download | Combined (used in WinHunt) |
+| 6 | `0x40` | privilege_escalation | Privilege escalation |
+| 7 | `0x80` | lateral_movement | Lateral movement |
+
+## 3) Required Channels
+
+| # | Channel | Short Name | Notes |
+|---|---------|------------|-------|
+| 1 | Security | WinSecurity | Core auth/process/group events |
+| 2 | System | WinSystem | Service 7045/7040, system events |
+| 3 | Application | WinApplication | MSSQL 18452-18456/33205 |
+| 4 | Microsoft-Windows-TerminalServices-LocalSessionManager/Operational | TS-LSM | Sessions 21/24/25 |
+| 5 | Microsoft-Windows-TerminalServices-RemoteConnectionManager/Operational | TS-RCM | NLA 1149 |
+| 6 | Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational | RdpCoreTS | Pre-auth 131/261 |
+| 7 | Microsoft-Windows-WinRM/Operational | WinRM | Remote management |
+| 8 | Microsoft-Windows-PowerShell/Operational | PowerShell | 4103/4104/53504 |
+| 9 | Microsoft-Windows-Windows Defender/Operational | Defender | 1006-1117/5001-5013 |
+| 10 | Microsoft-Windows-Sysmon/Operational | Sysmon | Phase C (optional, recommended) |
+| 11 | Microsoft-Windows-TaskScheduler/Operational | TaskSched | Recommended |
+
+## 4) Canonical Event Registry
+
+### 4.1 Authentication / Session
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4624 | auth_success | `0x02` | Security | Successful logon |
+| 4625 | auth_failure | `0x01` | Security | Failed logon |
+| 4634 | connection | `0x00` | Security | Session end (context) |
+| 4647 | connection | `0x00` | Security | User-initiated logoff (context) |
+| 4648 | auth_success | `0x02` | Security | Explicit-credentials logon |
+| 4672 | priv_escalation | `0x40` | Security | Special privileges assigned |
+| 4740 | auth_failure | `0x01` | Security | Account locked out |
+| 4768 | auth_failure | `0x01` | Security | Kerberos TGT request failure |
+| 4769 | auth_failure | `0x01` | Security | Kerberos service ticket failure |
+| 4771 | auth_failure | `0x01` | Security | Kerberos pre-auth failure |
+| 4776 | auth_failure | `0x01` | Security | NTLM credential validation |
+| 4777 | auth_failure | `0x01` | Security | Credential validation failed |
+| 4778 | auth_success | `0x02` | Security | RDP session reconnected |
+| 4779 | connection | `0x00` | Security | Session disconnected (context) |
+| 1149 | auth_success | `0x02` | TS-RCM | NLA authentication succeeded |
+
+### 4.2 RDP / Terminal Services Connection Context
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 131 | connection | `0x00` | RdpCoreTS | Pre-auth connection |
+| 261 | connection | `0x00` | RdpCoreTS | Listener received connection |
+| 21 | session_event | `0x00` | TS-LSM | Session logon succeeded |
+| 24 | session_event | `0x00` | TS-LSM | Session disconnected |
+| 25 | session_event | `0x00` | TS-LSM | Session reconnect succeeded |
+
+### 4.3 SMB / Share / Network Filtering
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 5140 | share_access | `0x00` | Security | Share object accessed |
+| 5145 | share_access | `0x00` | Security | Detailed share check |
+| 551 | auth_failure | `0x01` | Security | SMB session setup failed |
+| 1006 | share_access | `0x00` | SmbClient | SmbClient share denied |
+| 5156 | connection | `0x00` | Security | WFP connection allowed (noisy) |
+| 5157 | connection | `0x00` | Security | WFP connection blocked |
+
+### 4.4 MSSQL / Application Authentication
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 18452 | auth_failure | `0x01` | Application | MSSQL login failed untrusted domain |
+| 18453 | auth_success | `0x02` | Application | MSSQL login success (labeler map) |
+| 18454 | auth_success | `0x02` | Application | MSSQL login success (G/spec/runtime) |
+| 18456 | auth_failure | `0x01` | Application | MSSQL login failure |
+| 33205 | auth_failure | `0x01` | Application | MSSQL audit login failed |
+
+Master policy: accept both `18453` and `18454` as valid success until standardization finalized.
+
+### 4.5 Process / Command / Execution
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4688 | process_create / suspicious_cmd / file_download | `0x04`/`0x10`/`0x30` | Security | Process creation (classified by pattern) |
+| 4689 | process_create | `0x04` | Security | Process exit (context) |
+| 4104 | suspicious_cmd / file_download | `0x10`/`0x30` | PowerShell | Script block (classified by pattern) |
+| 4103 | suspicious_cmd | `0x10` | PowerShell | Module logging |
+| 400 | process_create | `0x04` | PowerShell | Engine start (context) |
+| 800 | process_create | `0x04` | PowerShell | Pipeline detail (context) |
+| 40961 | connection | `0x00` | PowerShell | Console starting (context) |
+| 40962 | connection | `0x00` | PowerShell | Console ready (context) |
+| 53504 | suspicious_cmd | `0x10` | PowerShell | Remoting IPC listener started |
+
+### 4.6 Service / Task Persistence
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4697 | service_install | `0x08` | Security | Service installed |
+| 7045 | service_install | `0x08` | System | Service installed |
+| 7040 | suspicious_cmd | `0x10` | System | Service start type changed |
+| 7036 | connection | `0x00` | System | Service state changed (noisy) |
+| 7034 | connection | `0x00` | System | Service terminated unexpectedly |
+| 4698 | service_install | `0x08` | Security | Scheduled task created |
+| 4699 | suspicious_cmd | `0x10` | Security | Scheduled task deleted |
+| 4700 | service_install | `0x08` | Security | Scheduled task enabled |
+| 4702 | suspicious_cmd | `0x10` | Security | Scheduled task updated |
+
+### 4.7 Account / Group / Privilege Manipulation
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4717 | priv_escalation | `0x40` | Security | System security access granted |
+| 4718 | priv_escalation | `0x40` | Security | System security access removed |
+| 4720 | priv_escalation | `0x40` | Security | User account created |
+| 4722 | priv_escalation | `0x40` | Security | User account enabled |
+| 4723 | priv_escalation | `0x40` | Security | Password change attempt |
+| 4724 | priv_escalation | `0x40` | Security | Password reset attempt |
+| 4725 | priv_escalation | `0x40` | Security | User account disabled |
+| 4726 | suspicious_cmd | `0x10` | Security | User account deleted |
+| 4728 | priv_escalation | `0x40` | Security | Member added to global group |
+| 4732 | priv_escalation | `0x40` | Security | Member added to local group |
+| 4733 | suspicious_cmd | `0x10` | Security | Member removed from local group |
+| 4756 | priv_escalation | `0x40` | Security | Member added to universal group |
+| 4798 | connection | `0x00` | Security | Local group membership enumerated (recon) |
+
+### 4.8 Object Access / Tamper / Evasion
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4656 | suspicious_cmd | `0x10` | Security | Object handle requested (sensitive filters) |
+| 4657 | suspicious_cmd | `0x10` | Security | Registry value modified |
+| 4660 | suspicious_cmd | `0x10` | Security | Object deleted |
+| 4663 | suspicious_cmd | `0x10` | Security | Object access attempt |
+| 4670 | priv_escalation | `0x40` | Security | Permissions changed |
+| 1102 | suspicious_cmd | `0x10` | Security | Audit log cleared (**critical**) |
+| 4719 | suspicious_cmd | `0x10` | Security | Audit policy changed |
+| 4907 | suspicious_cmd | `0x10` | Security | Object audit settings changed |
+
+### 4.9 Firewall / Network Control Tampering
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 4946 | suspicious_cmd | `0x10` | Security | Firewall rule added |
+| 4947 | suspicious_cmd | `0x10` | Security | Firewall rule modified |
+| 4948 | suspicious_cmd | `0x10` | Security | Firewall rule deleted |
+| 4950 | suspicious_cmd | `0x10` | Security | Firewall setting changed |
+| 5025 | suspicious_cmd | `0x10` | Security | Firewall service stopped |
+| 5030 | suspicious_cmd | `0x10` | Security | Firewall service failed start |
+
+### 4.10 Windows Defender
+
+| EventID | Type | Bits | Channel | Description |
+|---------|------|------|---------|-------------|
+| 1006 | suspicious_cmd | `0x10` | Defender | Malware detected |
+| 1007 | suspicious_cmd | `0x10` | Defender | Action taken |
+| 1008 | suspicious_cmd | `0x10` | Defender | Action failed |
+| 1116 | suspicious_cmd | `0x10` | Defender | Threat detected |
+| 1117 | suspicious_cmd | `0x10` | Defender | Threat action |
+| 5001 | suspicious_cmd | `0x10` | Defender | Real-time protection disabled |
+| 5004 | suspicious_cmd | `0x10` | Defender | RTP configuration changed |
+| 5007 | suspicious_cmd | `0x10` | Defender | Defender configuration changed |
+| 5010 | suspicious_cmd | `0x10` | Defender | Scanning disabled |
+| 5012 | suspicious_cmd | `0x10` | Defender | Virus scanning disabled |
+| 5013 | suspicious_cmd | `0x10` | Defender | Tamper-protection blocked change |
+
+### 4.11 Sysmon (Phase C — channel-gated)
+
+Channel: `Microsoft-Windows-Sysmon/Operational`
+**Must gate on channel** to avoid ID collisions with TS-LSM 21/25.
+
+| EventID | Type | Bits | Description |
+|---------|------|------|-------------|
+| 1 | process_create / suspicious_cmd | `0x04`/`0x10` | Process creation (by pattern) |
+| 2 | suspicious_cmd | `0x10` | File creation time changed |
+| 3 | connection | `0x00` | Network connection |
+| 5 | process_create | `0x04` | Process terminated (context) |
+| 6 | suspicious_cmd | `0x10` | Driver loaded |
+| 7 | suspicious_cmd | `0x10` | Image loaded (noisy) |
+| 8 | suspicious_cmd | `0x10` | CreateRemoteThread |
+| 9 | suspicious_cmd | `0x10` | RawAccessRead |
+| 10 | suspicious_cmd | `0x10` | ProcessAccess (especially LSASS) |
+| 11 | file_download | `0x20`/`0x30` | FileCreate |
+| 12 | suspicious_cmd | `0x10` | Registry object create/delete |
+| 13 | suspicious_cmd | `0x10` | Registry value set |
+| 15 | suspicious_cmd | `0x10` | ADS/stream hash |
+| 17 | suspicious_cmd | `0x10` | Pipe created |
+| 18 | suspicious_cmd | `0x10` | Pipe connected |
+| 19 | service_install | `0x08` | WMI event filter activity |
+| 20 | service_install | `0x08` | WMI event consumer activity |
+| 21 | service_install | `0x08` | WMI filter-consumer binding |
+| 22 | suspicious_cmd | `0x10` | DNS query (profile-dependent) |
+| 23 | suspicious_cmd | `0x10` | File delete archived |
+| 25 | suspicious_cmd | `0x10` | Process tampering |
+| 26 | suspicious_cmd | `0x10` | File delete detected |
+| 27 | suspicious_cmd | `0x10` | Executable block |
+| 28 | suspicious_cmd | `0x10` | Shredding block |
+| 29 | process_create / suspicious_cmd | `0x04`/`0x10` | FileExecutableDetected |
+
+## 5) StringInserts Index Reference (Verified via Microsoft Learn)
+
+**Source:** https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/
+**Verified:** 2026-02-26 — cross-referenced with working DFI Edge code and dfi_extract_sensor_v7.py XML parsing.
+
+pywin32 `ReadEventLog` returns `StringInserts` as a tuple. Indices are 0-based and match the `<Data Name="...">` order in the EventData XML.
+
+### 5.1 Core Authentication Events
+
+**Event 4624** — Logon Success (26+ fields, version 2 on Win10+)
+| Index | Field |
+|-------|-------|
+| 5 | TargetUserName |
+| 7 | **TargetLogonId** (used for logon chain) |
+| 8 | LogonType |
+| 18 | **IpAddress** |
+| 19 | IpPort |
+
+**Event 4625** — Logon Failure (21 fields)
+| Index | Field |
+|-------|-------|
+| 5 | TargetUserName |
+| 7 | Status (NTSTATUS code) |
+| 8 | FailureReason |
+| 9 | SubStatus (specific reason, see §5.8) |
+| 10 | LogonType |
+| 19 | **IpAddress** |
+
+**Event 4648** — Explicit Credentials (13+ fields)
+| Index | Field |
+|-------|-------|
+| 5 | TargetUserName |
+| 8 | TargetServerName |
+| 12 | **IpAddress** |
+
+**Event 4672** — Special Logon (5 fields)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+
+### 5.2 Kerberos / NTLM
+
+**Event 4768** — Kerberos TGT Request (14+ fields)
+| Index | Field |
+|-------|-------|
+| 9 | **IpAddress** |
+
+**Event 4769** — Kerberos Service Ticket (11+ fields)
+| Index | Field |
+|-------|-------|
+| 6 | **IpAddress** |
+
+**Event 4771/4776/4777** — Pre-auth / NTLM failures
+- No fixed IpAddress index. Use regex fallback on message text.
+
+**Event 4740** — Account Locked Out
+- IP not in fixed index. Use regex fallback on message text.
+
+### 5.3 Session Events
+
+**Event 4778** — Session Reconnected (6 fields)
+| Index | Field |
+|-------|-------|
+| 0 | AccountName |
+| 2 | LogonID |
+| 5 | **ClientAddress** |
+
+**Event 4779** — Session Disconnected (same layout as 4778)
+| Index | Field |
+|-------|-------|
+| 5 | **ClientAddress** |
+
+**Event 4634/4647** — Logoff (Subject-first layout)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+
+### 5.4 Process / Command Events
+
+**Event 4688** — Process Creation (15 fields, version 2)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+| 5 | NewProcessName |
+| 8 | CommandLine |
+| 13 | ParentProcessName (Win10+ only) |
+
+**Event 4104** — PowerShell Script Block (4 fields)
+| Index | Field |
+|-------|-------|
+| 0 | MessageNumber |
+| 1 | MessageTotal |
+| 2 | ScriptBlockText |
+| 3 | ScriptBlockId |
+- No SubjectLogonId. Use IP regex fallback on message.
+
+**Event 4103** — PowerShell Module Logging (3 fields)
+| Index | Field |
+|-------|-------|
+| 0 | ContextInfo (multi-line key=value blob) |
+| 2 | Payload (command invocation details) |
+
+### 5.5 Service / Task Events
+
+**Event 4697** — Service Install (9 fields, Subject-first with offset)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+| 4 | ServiceName |
+| 5 | ServiceFileName |
+
+**Event 7045** — Service Installed (System channel, positional params)
+| Index | Field |
+|-------|-------|
+| 0 | ServiceName |
+| 1 | ImagePath |
+
+**Event 7040** — Service Start Type Changed (System, positional)
+| Index | Field |
+|-------|-------|
+| 0 | ServiceDisplayName |
+| 1 | NewStartType |
+| 2 | OldStartType |
+
+**Event 4698/4699/4700/4702** — Scheduled Task (Subject at 3)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+
+### 5.6 Account Management Events (Target-first layout)
+
+**Events 4720, 4722, 4723, 4724, 4725, 4726** share the same layout:
+| Index | Field |
+|-------|-------|
+| 0 | TargetUserName |
+| 6 | **SubjectLogonId** |
+
+### 5.7 Group Management Events
+
+**Events 4728, 4732, 4733, 4756** share the same layout:
+| Index | Field |
+|-------|-------|
+| 2 | TargetUserName (Group name) |
+| 8 | **SubjectLogonId** |
+
+**Events 4717, 4718** — Security Access (Subject-first)
+| Index | Field |
+|-------|-------|
+| 3 | **SubjectLogonId** |
+
+### 5.8 Share Access
+
+**Event 5140/5145** — Share Object Accessed
+| Index | Field |
+|-------|-------|
+| 5 | **IpAddress** |
+
+### 5.9 RDP Channel Events
+
+**Event 1149** — NLA Auth Succeeded (TS-RemoteConnectionManager)
+| Index | Field |
+|-------|-------|
+| 0 | User |
+| 1 | Domain |
+| 2 | **SourceNetworkAddress** |
+
+**Event 131/261** — RdpCoreTS Pre-Auth
+| Index | Field |
+|-------|-------|
+| 0 | **ClientIP** |
+
+**Event 21/24/25** — TS-LocalSessionManager
+- IP embedded in message text. Use regex extraction.
+
+### 5.10 MSSQL Events
+
+**Events 18452, 18453, 18454, 18456, 33205**
+- IP not in fixed index. Use regex: `\[CLIENT:\s*(\d+\.\d+\.\d+\.\d+)\]`
+
+### 5.11 Sysmon Field Indices
+
+Sysmon events use named EventData fields. Key indices for pywin32 ReadEventLog:
+
+**Sysmon 1** — Process Create
+| Index | Field |
+|-------|-------|
+| 4 | Image |
+| 10 | CommandLine |
+| 12 | User |
+| 20 | ParentImage |
+
+**Sysmon 3** — Network Connection
+| Index | Field |
+|-------|-------|
+| 9 | SourceIp |
+| 14 | DestinationIp |
+| 15 | DestinationPort |
+
+**Sysmon 8** — CreateRemoteThread
+| Index | Field |
+|-------|-------|
+| 4 | SourceImage |
+| 7 | TargetImage |
+
+**Sysmon 10** — ProcessAccess
+| Index | Field |
+|-------|-------|
+| 4 | SourceImage |
+| 7 | TargetImage |
+
+**Sysmon 11** — FileCreate
+| Index | Field |
+|-------|-------|
+| 4 | Image |
+| 5 | TargetFilename |
+
+### 5.12 SubStatus Codes (4625 failure reasons)
+
+| SubStatus | Meaning |
+|-----------|---------|
+| `0xC0000064` | USER_NOT_FOUND |
+| `0xC000006A` | WRONG_PASSWORD |
+| `0xC0000234` | ACCOUNT_LOCKED |
+| `0xC0000072` | ACCOUNT_DISABLED |
+| `0xC000006F` | OUTSIDE_HOURS |
+| `0xC0000070` | WRONG_WORKSTATION |
+| `0xC0000071` | PASSWORD_EXPIRED |
+| `0xC0000193` | ACCOUNT_EXPIRED |
+| `0xC0000224` | MUST_CHANGE_PASSWORD |
+| `0xC0000022` | ACCESS_DENIED |
+
+## 6) Canonical Pattern Families (4688/4104/Sysmon 1)
+
+Use unescaped alternation for regex groups: `(a|b|c)` not `(a\|b\|c)`.
+
+Required families:
+- shell execution / encoded command
+- discovery / enumeration
+- downloader / transfer
+- lolbin execution
+- persistence setup (service/task/run key)
+- credential access / dump tooling
+- defense evasion / anti-forensics
+- lateral movement tooling
+
+## 7) Mandatory Extraction Fields
+
+At minimum retain per event where available:
+- `event_id`, `channel`, `provider`, `timestamp`
+- `IpAddress` / source IP equivalent
+- `LogonType`, `LogonId`, `SubjectLogonId`
+- `TargetUserName`, `TargetDomainName`, `WorkstationName`
+- `Status`, `SubStatus`, failure/result code
+- `CommandLine`, `NewProcessName`, `ParentProcessName`
+- service/task/firewall object fields when applicable
+- raw message text
+
+## 8) Source-IP Attribution Priority
+
+1. Direct StringInserts field (when index is known per §5).
+2. Event-specific regex (e.g., MSSQL `[CLIENT:x.x.x.x]`).
+3. LogonId chain lookup (4624 populates map; post-auth events chain via SubjectLogonId).
+4. Fallback regex on message text.
+5. If unresolved: mark unknown and keep event for context.
+
+## 9) Known Cross-Source Conflicts
+
+| Event | Conflict | Master Policy |
+|-------|----------|---------------|
+| 18453 vs 18454 | Both claim MSSQL success | Accept both until standardized |
+| 4779 | G: `0x00` / labeler: `0x80` | Context by default; escalate to `0x80` only when lateral criteria met |
+| 4726 | `0x10` vs `0x40` | Base `0x10`; add `0x40` when privileged-account tamper context exists |
+| TS-LSM 21/25 vs Sysmon 21/25 | Event ID collision | **Gate on channel name** — Sysmon only from `Sysmon/Operational` |
+| Defender 1006 vs SmbClient 1006 | Event ID collision | **Gate on channel name** — only from `Defender/Operational` |
+
+## 10) Implementation Coverage (v2.1)
+
+### Runtime `dfi_agent/evidence.py` — COMPLETE
+
+All events from §4.1–4.11 are handled. All StringInserts indices verified per §5.
+
+| Phase | Events | Status |
+|-------|--------|--------|
+| A (must-have) | 4624, 4625, 4688, 4697, 7045, 4104, 1149, 4672, 18456, 18454/18453 | **Implemented** |
+| B (high value) | 4740, 4771, 4776, 4698/4699/4700/4702, 4719, 1102, 4946-4948, 5001/1116/1117, 4648, 4768, 4769, 4778, 4103, 53504, 7040, 4717/4718, 4720-4726, 4728/4732/4733/4756, 4670, 4907, 4950, 5025/5030, 1006-1008, 5004-5013, 4656/4657/4660/4663, SmbClient 1006 | **Implemented** |
+| C (Sysmon) | 1,2,3,5,6,7,8,9,10,11,12,13,15,17,18,19,20,21,22,23,25,26,27,28,29 | **Implemented** (channel-gated) |
+| Context | 4634, 4647, 4689, 4779, 131, 261, 21/24/25, 551, 7034 | **Implemented** |
+
+### v2.1 fixes (2026-02-26)
+- **BUG FIX:** 4798 SubjectLogonId index corrected from 5 to 3
+- **CONFIG FIX:** Added missing channels to `EvidenceConfig.channels`: TS-RCM, Defender, Sysmon
+- **ADDED:** 4656, 4657, 4660, 4663 (object access/tamper), 4689 (process exit), 7034 (service crash), SmbClient 1006 (share denied)
+
+### Labeler `evidence_ingest.py` — partial
+
+Covers auth events + basic process/service. Does NOT use StringInserts (regex-based). Missing Phase B/C.
+
+### Log daemon `09_log_db_daemon.py` — partial
+
+Regex-based on syslog messages. Scoring via EVENTID_WEIGHTS. Missing fine-grained classification.
+
+## 11) Minimum Deployment Priorities
+
+**Phase A** (must-have for any deployment):
+- 4624, 4625, 4688, 4697, 7045, 4104, 1149, 4672, 18456, 18454/18453
+
+**Phase B** (high value — enable after Phase A validated):
+- 4648, 4740, 4768, 4769, 4771, 4776, 4778
+- 4698/4699/4700/4702, 4719, 1102
+- 4946/4947/4948, 5001/1116/1117
+- 4103, 53504, 7040
+- 4717/4718, 4720-4726, 4728/4732/4733/4756
+- 4670, 4907, 4950, 5025/5030
+- 1006-1008, 5004-5013
+
+**Phase C** (advanced — requires Sysmon installed):
+- 1, 3, 8, 10, 11, 19, 20, 21, 22, 25, 29

@@ -1,0 +1,3 @@
+"""WinHunt DFI capture agent package."""
+
+__version__ = "1.0.0"

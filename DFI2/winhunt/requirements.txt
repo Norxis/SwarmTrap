@@ -1,0 +1,6 @@
+pcapy-ng
+pywin32
+meshctrl
+flask
+waitress
+xgboost>=2.0.0

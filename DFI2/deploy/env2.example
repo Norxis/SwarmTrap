@@ -1,0 +1,22 @@
+HUNTER_IFACE=ens192
+CAPTURE_MODE=honeypot
+HONEYPOT_IPS=216.126.0.206
+HONEYPOT_EXCLUDE=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+CH_HOST=localhost
+CH_PORT=9000
+WATCHLIST_DB=/opt/dfi-hunter/watchlist.db
+FANOUT_WORKERS=4
+CPU_LIST=4,5,6,7
+SENSOR_ID=aio1
+TAP_POINT=AIO_MON
+SESSION_TIMEOUT=120
+FLUSH_INTERVAL=10
+
+# XGBoost early scoring (optional — leave XGB_MODEL_PATH empty to disable)
+XGB_MODEL_PATH=/opt/dfi2/ml/models/xgb_v6.json
+XGB_EARLY_PACKETS=50
+XGB_CONFIDENCE_THRESHOLD=0.9
+
+# RECON v2 scoring (optional — leave RECON_MODEL_PATH empty to disable)
+RECON_MODEL_PATH=/opt/dfi2/ml/models/xgb_recon_v2.json
+RECON_CONFIDENCE_THRESHOLD=0.9
