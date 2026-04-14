@@ -7,7 +7,9 @@
 All CH queries use a single lock acquisition per endpoint to avoid concurrent query errors.
 """
 
+import json
 import logging
+import os
 import time
 from typing import Optional
 
@@ -60,11 +62,11 @@ def register_god_routes(app: FastAPI, ch_adapter) -> None:
                     FROM dfi.ip_profile FINAL
                     WHERE updated_at >= now() - INTERVAL 10 MINUTE
                 """)
-                # Stage 3: GOD2 verdicts (DROP entries in ip_profile)
+                # Stage 3: GOD2 verdicts (any active verdict in ip_profile)
                 vr = client.execute("""
                     SELECT count(), toUnixTimestamp(max(updated_at))
                     FROM dfi.ip_profile FINAL
-                    WHERE verdict = 'DROP'
+                    WHERE verdict IN ('DROP', 'CAPTURE', 'DONE')
                       AND updated_at >= now() - INTERVAL 10 MINUTE
                 """)
                 # Stage 4: ip_profile read latency check
@@ -747,6 +749,75 @@ def register_god_routes(app: FastAPI, ch_adapter) -> None:
     # -----------------------------------------------------------------------
     # 9. GET /data/god/training
     # -----------------------------------------------------------------------
+    # D2 category classification for training page
+    _D2_ATTACK_PREFIXES = ('DIS_FN_', 'DIS_MISCLASS_', 'MULTI_', 'SCAN_')
+    _D2_ATTACK_SUFFIXES = ('_EVD', '_DIR')
+    _D2_CLEAN = ('CLN', 'RB')
+    _D2_EXCLUDED = ('DIS_FP_',)
+
+    def _classify_d2(dt: str) -> tuple[str, str]:
+        """Classify discrepancy_type → (label, training_label)."""
+        if dt in _D2_CLEAN:
+            return ('Clean baseline' if dt == 'CLN' else 'Research benign', 'CLEAN')
+        for p in _D2_EXCLUDED:
+            if dt.startswith(p):
+                return ('False positive', 'EXCLUDED')
+        for p in _D2_ATTACK_PREFIXES:
+            if dt.startswith(p):
+                return ('Attack (prefix)', 'ATTACK')
+        for s in _D2_ATTACK_SUFFIXES:
+            if dt.endswith(s):
+                return ('Attack (evidence/direct)', 'ATTACK')
+        return ('Unknown', 'ATTACK')
+
+    def _load_model_registry():
+        """Load model metrics from /opt/dfi2/ml/models/*_metrics.json."""
+        import glob as _glob
+        models_dir = '/opt/dfi2/ml/models'
+        deployed = {}
+        # Check symlinks for deployed models
+        for f in _glob.glob(f'{models_dir}/*.json'):
+            if os.path.islink(f) and not f.endswith('_metrics.json'):
+                deployed[os.path.basename(os.path.realpath(f))] = os.path.basename(f).replace('.json', '')
+        for f in _glob.glob(f'{models_dir}/*.pt'):
+            if os.path.islink(f):
+                deployed[os.path.basename(os.path.realpath(f))] = os.path.basename(f).replace('.pt', '')
+
+        entries = []
+        for mf in sorted(_glob.glob(f'{models_dir}/*_metrics.json')):
+            try:
+                m = json.load(open(mf))
+                base = os.path.basename(mf).replace('_metrics.json', '')
+                # Average accuracy/f1 across folds
+                folds = m.get('folds', [])
+                acc = sum(f.get('accuracy', 0) for f in folds) / len(folds) if folds else 0
+                f1 = sum(f.get('macro_f1', 0) for f in folds) / len(folds) if folds else 0
+                # Model file size
+                model_file = mf.replace('_metrics.json', '.json')
+                if not os.path.exists(model_file):
+                    model_file = mf.replace('_metrics.json', '.pt')
+                size_mb = round(os.path.getsize(model_file) / 1e6, 1) if os.path.exists(model_file) else 0
+                # Deployed?
+                dep = []
+                for real_name, alias in deployed.items():
+                    if real_name == base + '.json' or real_name == base + '.pt':
+                        dep.append(alias)
+                entries.append({
+                    "file": base,
+                    "size_mb": size_mb,
+                    "timestamp": m.get('timestamp', ''),
+                    "model_name": m.get('model', base),
+                    "classes": m.get('classes', []),
+                    "n_samples": m.get('n_samples', 0),
+                    "n_features": m.get('n_features', 0),
+                    "accuracy": round(acc, 6),
+                    "macro_f1": round(f1, 6),
+                    "deployed_on": dep,
+                })
+            except Exception:
+                continue
+        return entries
+
     @app.get("/data/god/training")
     def god_training():
         try:
@@ -768,8 +839,65 @@ def register_god_routes(app: FastAPI, ch_adapter) -> None:
                     FROM dfi.ip_capture_budget
                     ORDER BY service_id, service_class
                 """)
+                # 5-class readiness (attack data with evidence)
+                readiness_rows = client.execute("""
+                    SELECT discrepancy_type, count() AS cnt, uniq(src_ip) AS ips
+                    FROM dfi.ip_capture_d2
+                    WHERE discrepancy_type LIKE '%_EVD'
+                       OR discrepancy_type = 'SCAN_DIR'
+                    GROUP BY discrepancy_type
+                    ORDER BY cnt DESC
+                """)
+                # 5-class XGB distribution in D2 data
+                xgb_rows = client.execute("""
+                    SELECT xgb_class, count() AS cnt, uniq(src_ip) AS ips
+                    FROM dfi.ip_capture_d2
+                    GROUP BY xgb_class
+                    ORDER BY xgb_class
+                """)
 
             total_captured = int(d2_total[0][0]) if d2_total else 0
+
+            # Build by_category
+            totals = {"attack": 0, "clean": 0, "excluded": 0}
+            categories = []
+            for d in d2_rows:
+                dt = str(d[0])
+                cnt = int(d[1])
+                label, training_label = _classify_d2(dt)
+                categories.append({
+                    "key": dt,
+                    "label": label,
+                    "training_label": training_label,
+                    "count": cnt,
+                    "types": 1,
+                })
+                if training_label == "ATTACK":
+                    totals["attack"] += cnt
+                elif training_label == "CLEAN":
+                    totals["clean"] += cnt
+                else:
+                    totals["excluded"] += cnt
+
+            # Build readiness
+            readiness_cats = []
+            readiness_total = 0
+            for r in readiness_rows:
+                dt = str(r[0])
+                cnt = int(r[1])
+                ips = int(r[2])
+                label, _ = _classify_d2(dt)
+                readiness_cats.append({
+                    "key": dt,
+                    "label": label,
+                    "count": cnt,
+                    "ips": ips,
+                })
+                readiness_total += cnt
+
+            # Models
+            models = _load_model_registry()
+
             return {
                 "total_captured": total_captured,
                 "capture_limit": cap_limit,
@@ -778,6 +906,22 @@ def register_god_routes(app: FastAPI, ch_adapter) -> None:
                     "discrepancy_type": str(d[0]),
                     "count": int(d[1]),
                 } for d in d2_rows],
+                "by_category": {
+                    "categories": categories,
+                    "totals": totals,
+                },
+                "fiveclass_readiness": {
+                    "source": "ip_capture_d2 (EVD + SCAN_DIR)",
+                    "total_attack": readiness_total,
+                    "categories": readiness_cats,
+                },
+                "fiveclass_by_xgb": [{
+                    "class_id": int(x[0]),
+                    "name": CLASS_NAMES.get(int(x[0]), f"CLASS_{x[0]}"),
+                    "count": int(x[1]),
+                    "ips": int(x[2]),
+                } for x in xgb_rows],
+                "models": models,
                 "service_budgets": [{
                     "service_id": int(b[0]),
                     "service_name": SERVICE_NAMES.get(int(b[0]), f"SVC_{b[0]}"),
