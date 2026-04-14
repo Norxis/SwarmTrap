@@ -22,6 +22,7 @@ export default function Training() {
   const training = useGodTraining();
   const [budgetsOpen, setBudgetsOpen] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
+  const [attackOpen, setAttackOpen] = useState(false);
 
   if (training.isLoading) return <PageLoading />;
 
@@ -101,25 +102,32 @@ export default function Training() {
 
       {/* ---- Attack Readiness ---- */}
       {readiness && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-muted uppercase tracking-wider">
-            Attack Data Available
-            <span className="font-normal text-[10px] ml-2">({readiness.source})</span>
-          </h2>
-          <div className="bg-card border border-border rounded-lg px-4 py-3">
-            <div className="text-lg font-bold tabular-nums text-danger">{fmtNumber(readiness.total_attack)}</div>
-            <div className="text-[10px] text-muted mb-3">Total attack rows (EVD + SCAN_DIR)</div>
-            <div className="space-y-2">
-              {(readiness.categories ?? []).map((c: GodReadinessCategory) => (
-                <div key={c.key} className="flex items-center gap-3 text-xs">
-                  <span className="font-mono w-[100px] shrink-0">{c.key}</span>
-                  <span className="text-muted w-[140px] shrink-0">{c.label}</span>
-                  <span className="tabular-nums w-[80px] text-right shrink-0">{fmtNumber(c.count)}</span>
-                  <span className="tabular-nums text-muted text-[10px] w-[70px] text-right shrink-0">{fmtNumber(c.ips)} IPs</span>
-                </div>
-              ))}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setAttackOpen(!attackOpen)}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-xs hover:bg-panel/50"
+          >
+            <span className="font-medium">
+              Attack Data Available <span className="text-danger font-bold">{fmtNumber(readiness.total_attack)}</span>
+              <span className="text-muted ml-2">({(readiness.categories ?? []).length} groups)</span>
+            </span>
+            <span className="text-muted text-[10px]">{attackOpen ? "Collapse" : "Expand"}</span>
+          </button>
+          {attackOpen && (
+            <div className="border-t border-border px-4 py-3">
+              <div className="text-[10px] text-muted mb-3">Source: {readiness.source}</div>
+              <div className="space-y-2">
+                {(readiness.categories ?? []).map((c: GodReadinessCategory) => (
+                  <div key={c.key} className="flex items-center gap-3 text-xs">
+                    <span className="font-mono w-[100px] shrink-0">{c.key}</span>
+                    <span className="text-muted w-[140px] shrink-0">{c.label}</span>
+                    <span className="tabular-nums w-[80px] text-right shrink-0">{fmtNumber(c.count)}</span>
+                    <span className="tabular-nums text-muted text-[10px] w-[70px] text-right shrink-0">{fmtNumber(c.ips)} IPs</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
