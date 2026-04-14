@@ -1,0 +1,2 @@
+DFI2/ml/models/*.json filter=lfs diff=lfs merge=lfs -text
+DFI2/ml/models/*.pt filter=lfs diff=lfs merge=lfs -text
