@@ -1,1 +1,3 @@
 *.Zone.Identifier
+__pycache__/
+proxy/__pycache__/
