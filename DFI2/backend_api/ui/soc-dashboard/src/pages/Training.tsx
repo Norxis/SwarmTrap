@@ -176,7 +176,7 @@ export default function Training() {
               </tr>
             </thead>
             <tbody>
-              {models.map((m: GodModelEntry) => (
+              {[...models].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((m: GodModelEntry) => (
                 <tr key={m.file} className={cn(
                   "border-b border-border/50 hover:bg-panel/50",
                   m.deployed_on.length > 0 && "bg-ok/5"
