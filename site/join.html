@@ -33,36 +33,23 @@
 
       <p>We need developers, data scientists, security researchers, honeypot operators, and anyone who believes cybersecurity intelligence should be built by the community that uses it.</p>
 
-      <form class="signup-form" id="signup-form">
-        <div class="form-error" id="form-error"></div>
+      <div style="text-align:center; margin: 3rem 0">
+        <a href="https://github.com/Norxis/SwarmTrap" target="_blank" class="btn btn-large">View the code on GitHub &rarr;</a>
+      </div>
 
-        <label for="f-name">Name</label>
-        <input type="text" id="f-name" name="name" required maxlength="128" autocomplete="name">
+      <h2 style="font-family:'Courier New',monospace; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.15em; color:var(--accent); margin: 3rem 0 1.5rem;">How to get started</h2>
 
-        <label for="f-email">Email</label>
-        <input type="email" id="f-email" name="email" required maxlength="256" autocomplete="email">
+      <ol style="color:#ccc; padding-left:1.5rem; line-height:2.2;">
+        <li><strong>Read the code</strong> — the entire engine is open. Every folder has a README.</li>
+        <li><strong>Introduce yourself</strong> — post in <a href="https://github.com/Norxis/SwarmTrap/discussions" target="_blank">Discussions</a>. Who you are, what you want to build.</li>
+        <li><strong>Read the founding docs</strong> — <a href="https://github.com/Norxis/SwarmTrap/blob/master/SwarmTrap_Founding_Document_v4.md" target="_blank">SwarmTrap v4</a>, <a href="https://github.com/Norxis/SwarmTrap/blob/master/Foundation_v0_1_Complete_Design.md" target="_blank">Foundation v0.1</a>, <a href="https://github.com/Norxis/SwarmTrap/blob/master/Open_Utopia_Framework_v4.md" target="_blank">Open Utopia</a></li>
+        <li><strong>Pick a component</strong> — Foundation needs builders. The <a href="https://github.com/Norxis/SwarmTrap/blob/master/Foundation_v0_1_Complete_Design.md" target="_blank">v0.1 design</a> is ready.</li>
+        <li><strong>Open a PR</strong> — the first contributors build the platform they'll own.</li>
+      </ol>
 
-        <fieldset>
-          <legend>What would you contribute?</legend>
-          <div class="checkbox-group">
-            <label><input type="checkbox" name="roles" value="node_operator"> Node Operator</label>
-            <label><input type="checkbox" name="roles" value="developer"> Developer</label>
-            <label><input type="checkbox" name="roles" value="ml_data_scientist"> ML / Data Scientist</label>
-            <label><input type="checkbox" name="roles" value="security_researcher"> Security Researcher</label>
-            <label><input type="checkbox" name="roles" value="community_governance"> Community / Governance</label>
-          </div>
-        </fieldset>
-
-        <label for="f-why">Why SwarmTrap? <span style="color:var(--muted)">(optional)</span></label>
-        <textarea id="f-why" name="why" maxlength="500" rows="3"></textarea>
-
-        <!-- Honeypot: hidden from humans, bots fill it -->
-        <div style="position:absolute;left:-9999px" aria-hidden="true">
-          <input type="text" name="website" tabindex="-1" autocomplete="off">
-        </div>
-
-        <button type="submit" class="btn">Join the founding cohort</button>
-      </form>
+      <div style="text-align:center; margin: 3rem 0 1rem">
+        <a href="https://github.com/Norxis/SwarmTrap/discussions" target="_blank" class="btn btn-outline">Join the Discussion &rarr;</a>
+      </div>
 
     </div>
   </section>
@@ -73,7 +60,6 @@
     </div>
   </footer>
 
-  <script src="main.js"></script>
 
 </body>
 </html>
