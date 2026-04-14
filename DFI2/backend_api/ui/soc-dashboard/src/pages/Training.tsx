@@ -21,6 +21,7 @@ function labelVariant(label: string): string {
 export default function Training() {
   const training = useGodTraining();
   const [budgetsOpen, setBudgetsOpen] = useState(false);
+  const [catsOpen, setCatsOpen] = useState(false);
 
   if (training.isLoading) return <PageLoading />;
 
@@ -60,30 +61,41 @@ export default function Training() {
         </div>
 
         <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border bg-panel">
-                <th className="text-left px-4 py-2 text-muted font-medium">Category</th>
-                <th className="text-left px-4 py-2 text-muted font-medium">Label</th>
-                <th className="text-right px-4 py-2 text-muted font-medium">Rows</th>
-                <th className="text-right px-4 py-2 text-muted font-medium">Types</th>
-                <th className="text-left px-4 py-2 text-muted font-medium">Training</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cats.map((c: GodD2Category) => (
-                <tr key={c.key} className="border-b border-border/50 hover:bg-panel/50">
-                  <td className="px-4 py-2 font-mono font-medium">{c.key}</td>
-                  <td className="px-4 py-2 text-muted">{c.label}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(c.count)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted">{c.types}</td>
-                  <td className="px-4 py-2">
-                    <Badge variant={labelVariant(c.training_label)}>{c.training_label}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <button
+            onClick={() => setCatsOpen(!catsOpen)}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-xs hover:bg-panel/50"
+          >
+            <span className="font-medium">Categories <span className="text-muted">({cats.length})</span></span>
+            <span className="text-muted text-[10px]">{catsOpen ? "Collapse" : "Expand"}</span>
+          </button>
+          {catsOpen && (
+            <div className="border-t border-border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-panel">
+                    <th className="text-left px-4 py-2 text-muted font-medium">Category</th>
+                    <th className="text-left px-4 py-2 text-muted font-medium">Label</th>
+                    <th className="text-right px-4 py-2 text-muted font-medium">Rows</th>
+                    <th className="text-right px-4 py-2 text-muted font-medium">Types</th>
+                    <th className="text-left px-4 py-2 text-muted font-medium">Training</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cats.map((c: GodD2Category) => (
+                    <tr key={c.key} className="border-b border-border/50 hover:bg-panel/50">
+                      <td className="px-4 py-2 font-mono font-medium">{c.key}</td>
+                      <td className="px-4 py-2 text-muted">{c.label}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{fmtNumber(c.count)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted">{c.types}</td>
+                      <td className="px-4 py-2">
+                        <Badge variant={labelVariant(c.training_label)}>{c.training_label}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
