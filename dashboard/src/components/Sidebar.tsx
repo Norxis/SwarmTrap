@@ -60,9 +60,12 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="px-4 py-3 border-t border-border">
-        <a href="/" className="text-[10px] text-muted hover:text-accent transition-colors">
-          &larr; Back to SwarmTrap.net
+      <div className="px-3 py-3 border-t border-border space-y-2">
+        <a href="/" className="block text-xs text-center py-1.5 rounded border border-border text-muted hover:text-accent hover:border-accent transition-colors">
+          &larr; Back to Site
+        </a>
+        <a href="/join" className="block text-xs text-center py-1.5 rounded bg-accent/20 text-accent font-semibold hover:bg-accent hover:text-[#0d1117] transition-colors">
+          Join SwarmTrap
         </a>
       </div>
     </aside>

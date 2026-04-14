@@ -92,10 +92,16 @@ export function Topbar() {
         />
       </form>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
+        <a
+          href="/"
+          className="text-sm font-semibold px-4 py-2 rounded border border-border text-text hover:text-accent hover:border-accent transition-colors"
+        >
+          &larr; Back to Site
+        </a>
         <a
           href="/join"
-          className="text-xs text-accent hover:text-text px-2 py-1 rounded border border-accent/30 hover:bg-accent/10"
+          className="text-sm font-bold px-5 py-2 rounded bg-accent text-[#0d1117] hover:bg-white transition-colors"
         >
           Join SwarmTrap
         </a>
